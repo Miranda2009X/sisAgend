@@ -1,9 +1,10 @@
 const knex = require('knex');
+const path = require('path');
 
 const connection = knex({
   client: 'sqlite3',
   connection: {
-    filename: 'C:/Users/Diogo/Documents/sisAgend/src/database.sqlite'
+    filename: path.join(__dirname, 'database.sqlite')
   },
   useNullAsDefault: true
 });

@@ -12,10 +12,9 @@ module.exports = {
       const conflito = await db('AGENDAMENTO')
         .where('id_profissional', id_profissional)
         .andWhere('status', '!=', 'Cancelado')
-        .andWhere(function() {
-          this.whereBetween('data_hora_inicio', [data_hora_inicio, data_hora_fim])
-              .orWhereBetween('data_hora_fim', [data_hora_inicio, data_hora_fim]);
-        }).first();
+        .andWhere('data_hora_inicio', '<', data_hora_fim)
+        .andWhere('data_hora_fim', '>', data_hora_inicio)
+        .first();
 
       if (conflito) {
         return res.status(400).json({ error: "Este profissional já possui um agendamento neste horário." });
@@ -61,7 +60,7 @@ module.exports = {
       const { id } = req.params;
       const { status } = req.body;
 
-      if (!['Pendente', 'Concluido', 'Cancelado'].includes(status)) {
+      if (!['Pendente', 'Confirmado', 'Concluido', 'Cancelado'].includes(status)) {
         return res.status(400).json({ error: "Status inválido." });
       }
 

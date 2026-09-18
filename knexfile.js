@@ -1,12 +1,14 @@
+const path = require('path');
+
 module.exports = {
   development: {
     client: 'sqlite3',
     connection: {
-      filename: 'C:/Users/Diogo/Documents/sisAgend/src/database.sqlite'
+      filename: path.join(__dirname, 'src/database/database.sqlite')
     },
     useNullAsDefault: true,
     migrations: {
-      directory: 'C:/Users/Diogo/Documents/sisAgend/src/database/migrations'
+      directory: path.join(__dirname, 'src/database/migrations')
     }
   }
 };
