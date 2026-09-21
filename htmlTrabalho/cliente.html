@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="NatiBraids: tranças, cuidados e beleza para você se sentir ainda mais confiante.">
+    <meta name="theme-color" content="#123d42">
+    <title>NatiBraids | Tranças e beleza</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css.css">
+    
+  </head>
+  <body>
+    <header class="shell topbar">
+      <a class="brand" href="#inicio" aria-label="SISAGEND início">
+        <span class="brand-mark">S</span><span>NatiBraids</span>
+      </a>
+      <nav class="nav" aria-label="Navegação principal">
+        <a href="#recursos">Como funciona</a>
+        <a href="#sobre">Sobre</a>
+        <a class="button button-quiet" href="#agendar">Agendar agora</a>
+      </nav>
+      <button class="menu-toggle" type="button" aria-label="Abrir menu" aria-expanded="false">☰</button>
+    </header>
+
+    <main>
+      <section class="hero" id="inicio">
+        <div class="shell hero-grid">
+          <div>
+            <span class="eyebrow">Tranças feitas para você</span>
+            <h1>Seu estilo começa nos detalhes.</h1>
+            <p class="hero-copy">Um espaço acolhedor para realçar sua beleza, expressar sua personalidade e sair se sentindo ainda mais você.</p>
+            <div class="hero-actions">
+              <a class="button button-primary" href="#agendar">Quero agendar <span aria-hidden="true">↗</span></a>
+              <a class="button" href="#recursos">Conheça NatiBraids</a>
+            </div>
+            <p class="microcopy">Atendimento com hora marcada e cuidado em cada etapa.</p>
+          </div>
+
+          <div class="booking-card" id="agendar">
+            <div class="card-top">
+              <h2>Agende seu cuidado.</h2>
+              <span class="status-dot" aria-label="Sistema online"></span>
+            </div>
+            <form id="client-form">
+              <div class="form-grid">
+                <div class="field full">
+                  <label for="nome">Seu nome</label>
+                  <input id="nome" name="nome" type="text" placeholder="Como podemos chamar você?" required>
+                </div>
+                <div class="field">
+                  <label for="telefone">Telefone</label>
+                  <input id="telefone" name="telefone" type="tel" placeholder="(00) 00000-0000" required>
+                </div>
+                <div class="field">
+                  <label for="email">E-mail</label>
+                  <input id="email" name="email" type="email" placeholder="voce@email.com" required>
+                </div>
+                <div class="field full">
+                  <label for="senha_hash">Crie uma senha</label>
+                  <input id="senha_hash" name="senha_hash" type="password" placeholder="Mínimo de 6 caracteres" minlength="6" required>
+                </div>
+              </div>
+              <button class="button button-primary form-button" type="submit">Quero ser cliente <span aria-hidden="true">→</span></button>
+              <div class="form-message" id="form-message" role="status" aria-live="polite"></div>
+            </form>
+          </div>
+        </div>
+      </section>
+
+      <section class="section" id="recursos">
+        <div class="shell">
+          <div class="section-heading">
+            <h2>Beleza que combina com você.</h2>
+            <p>Escolha seu estilo, reserve seu horário e aproveite uma experiência feita para valorizar quem você é.</p>
+          </div>
+          <div class="feature-grid">
+            <article class="feature"><span class="feature-number">01 / TRANÇAS</span><h3>Estilos que expressam</h3><p>Tranças pensadas para combinar com sua personalidade, rotina e ocasião.</p></article>
+            <article class="feature"><span class="feature-number">02 / CUIDADO</span><h3>Atendimento próximo</h3><p>Cada detalhe é feito com atenção para você se sentir confortável do início ao fim.</p></article>
+            <article class="feature"><span class="feature-number">03 / CONFIANÇA</span><h3>Seu momento de beleza</h3><p>Um ambiente acolhedor para renovar o visual e sair daqui ainda mais confiante.</p></article>
+          </div>
+        </div>
+      </section>
+
+    </main>
+
+    <footer class="shell footer">
+      <div class="footer-row">
+        <small>© 2026 NatiBraids. Cuidando sempre de você.</small>
+        <div class="socials" aria-label="Redes sociais"><a href="#inicio" aria-label="Instagram">Instagram</a><a href="#inicio" aria-label="Facebook">Facebook</a><a href="mailto:oi@natibraids.com" aria-label="E-mail">Contato</a></div>
+      </div>
+    </footer>
+
+    <script>
+      const form = document.querySelector("#client-form");
+      const message = document.querySelector("#form-message");
+      const menuButton = document.querySelector(".menu-toggle");
+      const nav = document.querySelector(".nav");
+
+      form.addEventListener("submit", async (event) => {
+        event.preventDefault();
+        const submitButton = form.querySelector("button[type='submit']");
+        const formData = Object.fromEntries(new FormData(form));
+        submitButton.disabled = true;
+        submitButton.textContent = "Criando seu cadastro...";
+        message.className = "form-message";
+        message.textContent = "";
+
+        try {
+          const response = await fetch("http://localhost:3000/clientes", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(formData)
+          });
+          const result = await response.json();
+          if (!response.ok) throw new Error(result.error || "Não foi possível concluir o cadastro.");
+          message.className = "form-message success";
+          message.textContent = "Cadastro realizado. Seu próximo momento começa agora.";
+          form.reset();
+        } catch (error) {
+          message.className = "form-message error";
+          message.textContent = error.message.includes("Failed to fetch") ? "Não encontramos o servidor. Inicie o backend e tente novamente." : error.message;
+        } finally {
+          submitButton.disabled = false;
+          submitButton.innerHTML = "Quero ser cliente <span aria-hidden='true'>→</span>";
+        }
+      });
+
+      menuButton.addEventListener("click", () => {
+        const isOpen = menuButton.getAttribute("aria-expanded") === "true";
+        menuButton.setAttribute("aria-expanded", String(!isOpen));
+        nav.style.display = isOpen ? "none" : "flex";
+        nav.style.flexDirection = "column";
+        nav.style.position = "absolute";
+        nav.style.right = "18px";
+        nav.style.top = "70px";
+        nav.style.background = "#fffdf8";
+        nav.style.padding = "18px";
+        nav.style.borderRadius = "12px";
+        nav.style.boxShadow = "0 12px 30px rgba(18, 61, 66, .14)";
+      });
+    </script>
+  </body>
+</html>
