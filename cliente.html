@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="SISAGEND: agende seus cuidados com praticidade, clareza e um toque pessoal.">
+    <meta name="theme-color" content="#123d42">
+    <title>SISAGEND | Seu tempo, bem cuidado</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet">
+    <style>
+      :root {
+        --ink: #123d42;
+        --ink-soft: #496468;
+        --cream: #f8f5ed;
+        --paper: #fffdf8;
+        --coral: #e66e58;
+        --coral-dark: #bb4f40;
+        --mint: #d8e8dc;
+        --line: #d8e0d9;
+        --shadow: 0 24px 60px rgba(18, 61, 66, 0.12);
+      }
+
+      * { box-sizing: border-box; }
+      html { overflow-x: hidden; scroll-behavior: smooth; }
+      body {
+        margin: 0;
+        color: var(--ink);
+        background: var(--cream);
+        font-family: "DM Sans", sans-serif;
+        line-height: 1.5;
+        overflow-x: hidden;
+      }
+      a { color: inherit; text-decoration: none; }
+      button, input { font: inherit; }
+      .shell { width: min(1160px, calc(100% - 48px)); margin: 0 auto; }
+
+      .topbar {
+        align-items: center;
+        display: flex;
+        justify-content: space-between;
+        padding: 24px 0;
+      }
+      .brand { align-items: center; display: flex; gap: 10px; font-weight: 700; letter-spacing: .02em; }
+      .brand-mark {
+        align-items: center;
+        background: var(--coral);
+        border-radius: 50% 50% 50% 8px;
+        color: white;
+        display: flex;
+        font-family: "Playfair Display", serif;
+        font-size: 22px;
+        height: 38px;
+        justify-content: center;
+        transform: rotate(-12deg);
+        width: 38px;
+      }
+      .brand span:last-child { transform: translateY(1px); }
+      .nav { align-items: center; display: flex; gap: 30px; }
+      .nav a { color: var(--ink-soft); font-size: 14px; font-weight: 600; }
+      .nav a:hover { color: var(--coral-dark); }
+      .menu-toggle { display: none; }
+      .button {
+        align-items: center;
+        border: 0;
+        border-radius: 999px;
+        cursor: pointer;
+        display: inline-flex;
+        font-weight: 700;
+        gap: 9px;
+        justify-content: center;
+        padding: 14px 22px;
+        transition: transform .2s ease, box-shadow .2s ease, background .2s ease;
+      }
+      .button:hover { box-shadow: 0 10px 24px rgba(18, 61, 66, .14); transform: translateY(-2px); }
+      .button-primary { background: var(--coral); color: white; }
+      .button-primary:hover { background: var(--coral-dark); }
+      .button-quiet { background: var(--ink); color: white; }
+
+      .hero { padding: 74px 0 108px; position: relative; }
+      .hero::before {
+        background: var(--mint);
+        border-radius: 50%;
+        content: "";
+        height: 310px;
+        opacity: .68;
+        position: absolute;
+        right: -90px;
+        top: 22px;
+        width: 310px;
+        z-index: -1;
+      }
+      .hero-grid { align-items: center; display: grid; gap: 80px; grid-template-columns: 1.05fr .95fr; }
+      .eyebrow { color: var(--coral-dark); font-size: 12px; font-weight: 700; letter-spacing: .15em; text-transform: uppercase; }
+      h1, h2, h3 { margin: 0; }
+      h1 { font-family: "Playfair Display", serif; font-size: clamp(48px, 7vw, 84px); letter-spacing: -.045em; line-height: .98; max-width: 680px; }
+      .hero-copy { color: var(--ink-soft); font-size: 18px; margin: 26px 0 32px; max-width: 490px; }
+      .hero-actions { align-items: center; display: flex; flex-wrap: wrap; gap: 14px; }
+      .microcopy { color: var(--ink-soft); font-size: 12px; margin-top: 20px; }
+      .booking-card { background: var(--paper); border: 1px solid rgba(18, 61, 66, .08); border-radius: 20px; box-shadow: var(--shadow); padding: 30px; }
+      .card-top { align-items: flex-start; display: flex; justify-content: space-between; margin-bottom: 24px; }
+      .card-top h2 { font-family: "Playfair Display", serif; font-size: 30px; line-height: 1.05; }
+      .status-dot { background: var(--mint); border-radius: 50%; height: 12px; margin-top: 5px; position: relative; width: 12px; }
+      .status-dot::after { background: #4e8c68; border-radius: 50%; content: ""; inset: 3px; position: absolute; }
+      .form-grid { display: grid; gap: 15px; grid-template-columns: 1fr 1fr; }
+      .field { display: grid; gap: 7px; }
+      .field.full { grid-column: 1 / -1; }
+      label { color: var(--ink-soft); font-size: 12px; font-weight: 700; }
+      input { background: #fff; border: 1px solid var(--line); border-radius: 9px; color: var(--ink); outline: none; padding: 13px 14px; width: 100%; }
+      input:focus { border-color: var(--coral); box-shadow: 0 0 0 3px rgba(230, 110, 88, .14); }
+      .form-button { border-radius: 9px; margin-top: 6px; width: 100%; }
+      .form-message { border-radius: 8px; display: none; font-size: 13px; margin-top: 14px; padding: 11px 13px; }
+      .form-message.success { background: #e2f1e5; color: #27633e; display: block; }
+      .form-message.error { background: #fbe2dc; color: #873d31; display: block; }
+
+      .section { padding: 100px 0; }
+      .section-heading { align-items: end; display: flex; justify-content: space-between; margin-bottom: 38px; }
+      h2 { font-family: "Playfair Display", serif; font-size: clamp(34px, 4vw, 54px); letter-spacing: -.03em; line-height: 1; }
+      .section-heading p { color: var(--ink-soft); margin: 0; max-width: 310px; }
+      .feature-grid { display: grid; gap: 18px; grid-template-columns: repeat(3, 1fr); }
+      .feature { border-top: 1px solid var(--ink); padding: 24px 10px 0 0; }
+      .feature-number { color: var(--coral); font-size: 13px; font-weight: 700; }
+      .feature h3 { font-size: 21px; margin: 38px 0 11px; }
+      .feature p { color: var(--ink-soft); font-size: 14px; margin: 0; max-width: 290px; }
+      .about { background: var(--ink); color: white; overflow: hidden; position: relative; }
+      .about::after { border: 1px solid rgba(255, 255, 255, .2); border-radius: 50%; content: ""; height: 410px; position: absolute; right: -100px; top: -140px; width: 410px; }
+      .about-grid { align-items: center; display: grid; gap: 70px; grid-template-columns: .8fr 1.2fr; position: relative; z-index: 1; }
+      .about h2 { max-width: 310px; }
+      .about-copy { color: #c2d0cb; font-size: 17px; max-width: 600px; }
+      .about-copy strong { color: white; }
+      .numbers { display: flex; gap: 42px; margin-top: 30px; }
+      .number strong { display: block; font-family: "Playfair Display", serif; font-size: 36px; }
+      .number span { color: #c2d0cb; font-size: 12px; }
+      .footer { padding: 34px 0; }
+      .footer-row { align-items: center; border-top: 1px solid var(--line); display: flex; justify-content: space-between; padding-top: 24px; }
+      .footer small { color: var(--ink-soft); }
+      .socials { display: flex; gap: 18px; }
+      .socials a { color: var(--ink-soft); font-size: 13px; font-weight: 700; }
+
+      @media (max-width: 780px) {
+        .shell { width: min(100% - 36px, 560px); }
+        .topbar { padding: 18px 0; }
+        .nav { display: none; }
+        .menu-toggle { background: none; border: 0; color: var(--ink); display: block; font-size: 24px; padding: 4px; }
+        .hero { padding: 52px 0 70px; }
+        .hero-grid, .about-grid { grid-template-columns: 1fr; gap: 42px; }
+        .hero::before { height: 180px; right: -80px; top: 10px; width: 180px; }
+        .booking-card { padding: 22px; }
+        .section { padding: 70px 0; }
+        .section-heading { align-items: flex-start; flex-direction: column; gap: 18px; }
+        .feature-grid { grid-template-columns: 1fr; }
+        .feature h3 { margin-top: 20px; }
+        .about-grid { gap: 24px; }
+        .footer-row { align-items: flex-start; flex-direction: column; gap: 18px; }
+      }
+      @media (max-width: 420px) {
+        .form-grid { grid-template-columns: 1fr; }
+        .field.full { grid-column: auto; }
+        .hero-actions .button { width: 100%; }
+      }
+    </style>
+  </head>
+  <body>
+    <header class="shell topbar">
+      <a class="brand" href="#inicio" aria-label="SISAGEND início">
+        <span class="brand-mark">S</span><span>SISAGEND</span>
+      </a>
+      <nav class="nav" aria-label="Navegação principal">
+        <a href="#recursos">Como funciona</a>
+        <a href="#sobre">Sobre</a>
+        <a class="button button-quiet" href="#agendar">Agendar agora</a>
+      </nav>
+      <button class="menu-toggle" type="button" aria-label="Abrir menu" aria-expanded="false">☰</button>
+    </header>
+
+    <main>
+      <section class="hero" id="inicio">
+        <div class="shell hero-grid">
+          <div>
+            <span class="eyebrow">Seu tempo, bem cuidado</span>
+            <h1>Reserve espaço para o que faz bem.</h1>
+            <p class="hero-copy">Uma agenda simples para você marcar seus cuidados, acompanhar seus horários e chegar ao seu momento com tranquilidade.</p>
+            <div class="hero-actions">
+              <a class="button button-primary" href="#agendar">Quero agendar <span aria-hidden="true">↗</span></a>
+              <a class="button" href="#recursos">Conheça o SISAGEND</a>
+            </div>
+            <p class="microcopy">Organizado para sua rotina. Feito para você.</p>
+          </div>
+
+          <div class="booking-card" id="agendar">
+            <div class="card-top">
+              <h2>Comece por aqui.</h2>
+              <span class="status-dot" aria-label="Sistema online"></span>
+            </div>
+            <form id="client-form">
+              <div class="form-grid">
+                <div class="field full">
+                  <label for="nome">Seu nome</label>
+                  <input id="nome" name="nome" type="text" placeholder="Como podemos chamar você?" required>
+                </div>
+                <div class="field">
+                  <label for="telefone">Telefone</label>
+                  <input id="telefone" name="telefone" type="tel" placeholder="(00) 00000-0000" required>
+                </div>
+                <div class="field">
+                  <label for="email">E-mail</label>
+                  <input id="email" name="email" type="email" placeholder="voce@email.com" required>
+                </div>
+                <div class="field full">
+                  <label for="senha_hash">Crie uma senha</label>
+                  <input id="senha_hash" name="senha_hash" type="password" placeholder="Mínimo de 6 caracteres" minlength="6" required>
+                </div>
+              </div>
+              <button class="button button-primary form-button" type="submit">Criar meu cadastro <span aria-hidden="true">→</span></button>
+              <div class="form-message" id="form-message" role="status" aria-live="polite"></div>
+            </form>
+          </div>
+        </div>
+      </section>
+
+      <section class="section" id="recursos">
+        <div class="shell">
+          <div class="section-heading">
+            <h2>Menos correria.<br>Mais presença.</h2>
+            <p>Tudo que você precisa para transformar um horário marcado em um momento esperado.</p>
+          </div>
+          <div class="feature-grid">
+            <article class="feature"><span class="feature-number">01 / SIMPLICIDADE</span><h3>Agende em poucos passos</h3><p>Uma experiência direta, sem telas desnecessárias ou dúvidas no caminho.</p></article>
+            <article class="feature"><span class="feature-number">02 / CLAREZA</span><h3>Tenha tudo à mão</h3><p>Veja seus serviços, horários e informações importantes sempre que precisar.</p></article>
+            <article class="feature"><span class="feature-number">03 / CUIDADO</span><h3>Uma rotina mais leve</h3><p>Organize seus compromissos e deixe seu tempo trabalhar a seu favor.</p></article>
+          </div>
+        </div>
+      </section>
+
+      <section class="section about" id="sobre">
+        <div class="shell about-grid">
+          <h2>Feito para caber na sua vida.</h2>
+          <div class="about-copy">
+            <p>O SISAGEND nasceu de uma ideia simples: <strong>cuidar da sua agenda também é cuidar de você.</strong> Criamos uma experiência calma e objetiva para conectar pessoas aos serviços que fazem seus dias melhores.</p>
+            <div class="numbers"><div class="number"><strong>01</strong><span>lugar para sua rotina</span></div><div class="number"><strong>24h</strong><span>mais clareza no dia</span></div><div class="number"><strong>∞</strong><span>momentos para viver</span></div></div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="shell footer">
+      <div class="footer-row">
+        <small>© 2026 SISAGEND. Seu tempo, bem cuidado.</small>
+        <div class="socials" aria-label="Redes sociais"><a href="#inicio" aria-label="Instagram">Instagram</a><a href="#inicio" aria-label="Facebook">Facebook</a><a href="mailto:oi@sisagend.com" aria-label="E-mail">Contato</a></div>
+      </div>
+    </footer>
+
+    <script>
+      const form = document.querySelector("#client-form");
+      const message = document.querySelector("#form-message");
+      const menuButton = document.querySelector(".menu-toggle");
+      const nav = document.querySelector(".nav");
+
+      form.addEventListener("submit", async (event) => {
+        event.preventDefault();
+        const submitButton = form.querySelector("button[type='submit']");
+        const formData = Object.fromEntries(new FormData(form));
+        submitButton.disabled = true;
+        submitButton.textContent = "Criando seu cadastro...";
+        message.className = "form-message";
+        message.textContent = "";
+
+        try {
+          const response = await fetch("http://localhost:3000/clientes", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(formData)
+          });
+          const result = await response.json();
+          if (!response.ok) throw new Error(result.error || "Não foi possível concluir o cadastro.");
+          message.className = "form-message success";
+          message.textContent = "Cadastro realizado. Seu próximo momento começa agora.";
+          form.reset();
+        } catch (error) {
+          message.className = "form-message error";
+          message.textContent = error.message.includes("Failed to fetch") ? "Não encontramos o servidor. Inicie o backend e tente novamente." : error.message;
+        } finally {
+          submitButton.disabled = false;
+          submitButton.innerHTML = "Criar meu cadastro <span aria-hidden='true'>→</span>";
+        }
+      });
+
+      menuButton.addEventListener("click", () => {
+        const isOpen = menuButton.getAttribute("aria-expanded") === "true";
+        menuButton.setAttribute("aria-expanded", String(!isOpen));
+        nav.style.display = isOpen ? "none" : "flex";
+        nav.style.flexDirection = "column";
+        nav.style.position = "absolute";
+        nav.style.right = "18px";
+        nav.style.top = "70px";
+        nav.style.background = "#fffdf8";
+        nav.style.padding = "18px";
+        nav.style.borderRadius = "12px";
+        nav.style.boxShadow = "0 12px 30px rgba(18, 61, 66, .14)";
+      });
+    </script>
+  </body>
+</html>
