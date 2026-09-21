@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Conheça as profissionais da NatiBraids e cadastre uma nova especialista.">
+    <meta name="theme-color" content="#123d42">
+    <title>Profissionais | NatiBraids</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css.css">
+  </head>
+  <body>
+    <header class="shell topbar">
+      <a class="brand" href="cliente.html" aria-label="NatiBraids início">
+        <span class="brand-mark">N</span><span>NatiBraids</span>
+      </a>
+      <nav class="nav" aria-label="Navegação principal">
+        <a href="cliente.html#recursos">Serviços</a>
+        <a href="profissionais.html" aria-current="page">Profissionais</a>
+        <a href="agendamento.html">Agendamento</a>
+        <a class="button button-quiet" href="agendamento.html">Agendar agora</a>
+      </nav>
+      <button class="menu-toggle" type="button" aria-label="Abrir menu" aria-expanded="false">☰</button>
+    </header>
+
+    <main>
+      <section class="section professionals-page">
+        <div class="shell">
+          <div class="professionals-heading">
+            <div>
+              <span class="eyebrow">Quem cuida de você</span>
+              <h1>Profissionais.</h1>
+            </div>
+            <p>Conheça nossa equipe e escolha quem vai acompanhar o seu próximo visual.</p>
+          </div>
+
+          <div class="professionals-layout">
+            <div class="professional-grid" id="professional-list" aria-live="polite">
+              <p class="empty-state">Carregando profissionais...</p>
+            </div>
+
+            <form class="schedule-card" id="professional-form">
+              <div class="card-top">
+                <h2>Nova profissional</h2>
+                <span class="status-dot" aria-label="Sistema online"></span>
+              </div>
+              <div class="form-grid">
+                <div class="field full">
+                  <label for="nome">Nome</label>
+                  <input id="nome" name="nome" type="text" placeholder="Ex.: Natália Souza" required>
+                </div>
+                <div class="field full">
+                  <label for="telefone">Telefone</label>
+                  <input id="telefone" name="telefone" type="tel" placeholder="(41) 99999-9999" required>
+                </div>
+              </div>
+              <button class="button button-primary form-button" type="submit">Cadastrar profissional <span aria-hidden="true">→</span></button>
+              <div class="form-message" id="professional-message" role="status" aria-live="polite"></div>
+            </form>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="shell footer">
+      <div class="footer-row">
+        <small>© 2026 NatiBraids. Cuidando sempre de você.</small>
+        <div class="socials" aria-label="Redes sociais"><a href="cliente.html">Instagram</a><a href="cliente.html">Facebook</a><a href="mailto:oi@natibraids.com">Contato</a></div>
+      </div>
+    </footer>
+
+    <script>
+      const apiUrl = "http://localhost:3000";
+      const list = document.querySelector("#professional-list");
+      const form = document.querySelector("#professional-form");
+      const message = document.querySelector("#professional-message");
+      const menuButton = document.querySelector(".menu-toggle");
+      const nav = document.querySelector(".nav");
+
+      function renderProfessionals(professionals) {
+        list.innerHTML = professionals.length
+          ? professionals.map(professional => `
+              <article class="professional-card">
+                <div class="professional-avatar" aria-hidden="true">${professional.nome.charAt(0).toUpperCase()}</div>
+                <h3>${professional.nome}</h3>
+                <p>${professional.telefone}</p>
+                <div class="professional-status">${professional.ativo ? "Disponível" : "Indisponível"}</div>
+              </article>
+            `).join("")
+          : '<p class="empty-state">Nenhuma profissional cadastrada ainda.</p>';
+      }
+
+      async function loadProfessionals() {
+        try {
+          const response = await fetch(`${apiUrl}/profissionais`);
+          if (!response.ok) throw new Error();
+          renderProfessionals(await response.json());
+        } catch (error) {
+          list.innerHTML = '<p class="empty-state">Inicie o servidor para carregar as profissionais.</p>';
+        }
+      }
+
+      form.addEventListener("submit", async (event) => {
+        event.preventDefault();
+        const submitButton = form.querySelector("button[type='submit']");
+        submitButton.disabled = true;
+        message.className = "form-message";
+        try {
+          const response = await fetch(`${apiUrl}/profissionais`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(Object.fromEntries(new FormData(form)))
+          });
+          const result = await response.json();
+          if (!response.ok) throw new Error(result.error || "Não foi possível cadastrar.");
+          message.className = "form-message success";
+          message.textContent = "Profissional cadastrada com sucesso!";
+          form.reset();
+          loadProfessionals();
+        } catch (error) {
+          message.className = "form-message error";
+          message.textContent = error.message.includes("Failed to fetch") ? "Inicie o servidor para cadastrar." : error.message;
+        } finally {
+          submitButton.disabled = false;
+        }
+      });
+
+      menuButton.addEventListener("click", () => {
+        const isOpen = menuButton.getAttribute("aria-expanded") === "true";
+        menuButton.setAttribute("aria-expanded", String(!isOpen));
+        nav.style.display = isOpen ? "none" : "flex";
+        nav.style.flexDirection = "column";
+        nav.style.position = "absolute";
+        nav.style.right = "18px";
+        nav.style.top = "70px";
+        nav.style.background = "#fffdf8";
+        nav.style.padding = "18px";
+        nav.style.borderRadius = "12px";
+        nav.style.boxShadow = "0 12px 30px rgba(18, 61, 66, .14)";
+      });
+
+      loadProfessionals();
+    </script>
+  </body>
+</html>

@@ -123,6 +123,17 @@
       .appointment-intro h1 { font-family: "Playfair Display", serif; font-size: clamp(46px, 6vw, 74px); letter-spacing: -.045em; line-height: .98; margin: 18px 0 24px; }
       .appointment-intro p { color: var(--ink-soft); font-size: 18px; max-width: 360px; }
       .back-link { color: var(--coral-dark); display: inline-block; font-size: 14px; font-weight: 700; margin-top: 18px; }
+      .professionals-page { min-height: calc(100vh - 150px); }
+      .professionals-heading { align-items: end; display: flex; justify-content: space-between; margin-bottom: 38px; }
+      .professionals-heading p { color: var(--ink-soft); margin: 0; max-width: 340px; }
+      .professionals-layout { align-items: start; display: grid; gap: 42px; grid-template-columns: 1.25fr .75fr; }
+      .professional-grid { display: grid; gap: 16px; grid-template-columns: repeat(2, 1fr); }
+      .professional-card { background: var(--paper); border: 1px solid rgba(18, 61, 66, .08); border-radius: 14px; padding: 22px; }
+      .professional-avatar { align-items: center; background: var(--mint); border-radius: 50% 50% 50% 8px; color: var(--ink); display: flex; font-family: "Playfair Display", serif; font-size: 25px; height: 48px; justify-content: center; margin-bottom: 18px; width: 48px; }
+      .professional-card h3 { font-size: 20px; }
+      .professional-card p { color: var(--ink-soft); font-size: 14px; margin: 8px 0 0; }
+      .professional-status { color: #4e8c68; font-size: 12px; font-weight: 700; margin-top: 18px; text-transform: uppercase; }
+      .empty-state { color: var(--ink-soft); grid-column: 1 / -1; margin: 0; }
       .footer { padding: 34px 0; }
       .footer-row { align-items: center; border-top: 1px solid var(--line); display: flex; justify-content: space-between; padding-top: 24px; }
       .footer small { color: var(--ink-soft); }
@@ -135,17 +146,19 @@
         .nav { display: none; }
         .menu-toggle { background: none; border: 0; color: var(--ink); display: block; font-size: 24px; padding: 4px; }
         .hero { padding: 52px 0 70px; }
-        .hero-grid, .schedule-grid, .appointment-layout { grid-template-columns: 1fr; gap: 42px; }
+        .hero-grid, .schedule-grid, .appointment-layout, .professionals-layout { grid-template-columns: 1fr; gap: 42px; }
         .hero::before { height: 180px; right: -80px; top: 10px; width: 180px; }
         .booking-card { padding: 22px; }
         .section { padding: 70px 0; }
         .section-heading { align-items: flex-start; flex-direction: column; gap: 18px; }
         .feature-grid { grid-template-columns: 1fr; }
+        .professionals-heading { align-items: flex-start; flex-direction: column; gap: 18px; }
         .feature h3 { margin-top: 20px; }
         .footer-row { align-items: flex-start; flex-direction: column; gap: 18px; }
       }
       @media (max-width: 420px) {
         .form-grid { grid-template-columns: 1fr; }
+        .professional-grid { grid-template-columns: 1fr; }
         .field.full { grid-column: auto; }
         .hero-actions .button { width: 100%; }
       }

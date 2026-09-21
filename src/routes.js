@@ -51,6 +51,16 @@ routes.post('/servicos', async (req, res) => {
 });
 
 routes.get('/clientes', ClienteController.listar);
+routes.get('/profissionais', async (req, res) => {
+  try {
+    const profissionais = await db('PROFISSIONAL')
+      .select('id_professional as id_profissional', 'nome', 'telefone', 'ativo')
+      .orderBy('nome');
+    return res.json(profissionais);
+  } catch (error) {
+    return res.status(500).json({ error: error.message });
+  }
+});
 routes.get('/servicos', ServicoController.listar);
 
 routes.post('/agendamentos', AgendamentoController.agendar);
