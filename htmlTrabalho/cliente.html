@@ -18,9 +18,9 @@
         <span class="brand-mark">S</span><span>NatiBraids</span>
       </a>
       <nav class="nav" aria-label="Navegação principal">
-        <a href="#recursos">Como funciona</a>
-        <a href="#sobre">Sobre</a>
-        <a class="button button-quiet" href="#agendar">Agendar agora</a>
+        <a href="#recursos">Serviços</a>
+        <a href="agendamento.html">Agendamento</a>
+        <a class="button button-quiet" href="agendamento.html">Agendar agora</a>
       </nav>
       <button class="menu-toggle" type="button" aria-label="Abrir menu" aria-expanded="false">☰</button>
     </header>
@@ -33,7 +33,7 @@
             <h1>Seu estilo começa nos detalhes.</h1>
             <p class="hero-copy">Um espaço acolhedor para realçar sua beleza, expressar sua personalidade e sair se sentindo ainda mais você.</p>
             <div class="hero-actions">
-              <a class="button button-primary" href="#agendar">Quero agendar <span aria-hidden="true">↗</span></a>
+              <a class="button button-primary" href="agendamento.html">Quero agendar <span aria-hidden="true">↗</span></a>
               <a class="button" href="#recursos">Conheça NatiBraids</a>
             </div>
             <p class="microcopy">Atendimento com hora marcada e cuidado em cada etapa.</p>
@@ -98,6 +98,7 @@
       const message = document.querySelector("#form-message");
       const menuButton = document.querySelector(".menu-toggle");
       const nav = document.querySelector(".nav");
+      const apiUrl = "http://localhost:3000";
 
       form.addEventListener("submit", async (event) => {
         event.preventDefault();
@@ -109,7 +110,7 @@
         message.textContent = "";
 
         try {
-          const response = await fetch("http://localhost:3000/clientes", {
+          const response = await fetch(`${apiUrl}/clientes`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(formData)

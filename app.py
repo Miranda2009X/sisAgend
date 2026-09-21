@@ -116,6 +116,15 @@ def criar_profissional():
     return jsonify(message="Profissional cadastrado com sucesso!"), 201
 
 
+@app.get("/profissionais")
+def listar_profissionais():
+    with get_db() as connection:
+        rows = connection.execute(
+            "SELECT id_professional AS id_profissional, nome, telefone FROM PROFISSIONAL WHERE ativo = 1"
+        ).fetchall()
+    return jsonify(rows_as_dict(rows))
+
+
 @app.post("/categorias")
 def criar_categoria():
     data, missing = body_fields("nome_categoria")

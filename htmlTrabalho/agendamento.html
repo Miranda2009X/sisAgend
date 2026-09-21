@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Agende seu horário na NatiBraids e escolha o serviço ideal para o seu estilo.">
+    <meta name="theme-color" content="#123d42">
+    <title>Agendamento | NatiBraids</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css.css">
+  </head>
+  <body>
+    <header class="shell topbar">
+      <a class="brand" href="cliente.html" aria-label="NatiBraids início">
+        <span class="brand-mark">N</span><span>NatiBraids</span>
+      </a>
+      <nav class="nav" aria-label="Navegação principal">
+        <a href="cliente.html#recursos">Serviços</a>
+        <a href="agendamento.html" aria-current="page">Agendamento</a>
+        <a class="button button-quiet" href="cliente.html">Voltar ao início</a>
+      </nav>
+      <button class="menu-toggle" type="button" aria-label="Abrir menu" aria-expanded="false">☰</button>
+    </header>
+
+    <main>
+      <section class="section appointment-page">
+        <div class="shell appointment-layout">
+          <div class="appointment-intro">
+            <span class="eyebrow">Seu próximo visual</span>
+            <h1>Agende seu horário.</h1>
+            <p>Escolha o serviço, a profissional e o melhor momento para cuidar de você.</p>
+            <a class="back-link" href="cliente.html">← Voltar para NatiBraids</a>
+          </div>
+
+          <form class="schedule-card" id="appointment-form">
+            <div class="card-top">
+              <h2>Vamos reservar?</h2>
+              <span class="status-dot" aria-label="Sistema online"></span>
+            </div>
+            <div class="form-grid">
+              <div class="field">
+                <label for="id_cliente">Código do cliente</label>
+                <input id="id_cliente" name="id_cliente" type="number" min="1" placeholder="Ex.: 1" required>
+              </div>
+              <div class="field">
+                <label for="id_profissional">Profissional</label>
+                <select id="id_profissional" name="id_profissional" required>
+                  <option value="">Carregando profissionais...</option>
+                </select>
+              </div>
+              <div class="field full">
+                <label for="id_servico">Serviço</label>
+                <select id="id_servico" name="id_servico" required>
+                  <option value="">Carregando serviços...</option>
+                </select>
+              </div>
+              <div class="field">
+                <label for="data_hora_inicio">Início</label>
+                <input id="data_hora_inicio" name="data_hora_inicio" type="datetime-local" required>
+              </div>
+              <div class="field">
+                <label for="data_hora_fim">Fim</label>
+                <input id="data_hora_fim" name="data_hora_fim" type="datetime-local" required>
+              </div>
+            </div>
+            <button class="button button-primary form-button" type="submit">Confirmar agendamento <span aria-hidden="true">→</span></button>
+            <div class="form-message" id="appointment-message" role="status" aria-live="polite"></div>
+          </form>
+        </div>
+      </section>
+    </main>
+
+    <footer class="shell footer">
+      <div class="footer-row">
+        <small>© 2026 NatiBraids. Cuidando sempre de você.</small>
+        <div class="socials" aria-label="Redes sociais"><a href="cliente.html" aria-label="Instagram">Instagram</a><a href="cliente.html" aria-label="Facebook">Facebook</a><a href="mailto:oi@natibraids.com" aria-label="E-mail">Contato</a></div>
+      </div>
+    </footer>
+
+    <script>
+      const apiUrl = "http://localhost:3000";
+      const form = document.querySelector("#appointment-form");
+      const message = document.querySelector("#appointment-message");
+      const menuButton = document.querySelector(".menu-toggle");
+      const nav = document.querySelector(".nav");
+
+      async function loadOptions() {
+        try {
+          const [servicesResponse, professionalsResponse] = await Promise.all([
+            fetch(`${apiUrl}/servicos`),
+            fetch(`${apiUrl}/profissionais`)
+          ]);
+          if (!servicesResponse.ok || !professionalsResponse.ok) throw new Error();
+          const services = await servicesResponse.json();
+          const professionals = await professionalsResponse.json();
+          document.querySelector("#id_servico").innerHTML = services.length
+            ? services.map(service => `<option value="${service.id_servico}">${service.nome_servico} - R$ ${Number(service.preco).toFixed(2)}</option>`).join("")
+            : "<option value=\"\">Nenhum serviço disponível</option>";
+          document.querySelector("#id_profissional").innerHTML = professionals.length
+            ? professionals.map(professional => `<option value="${professional.id_profissional}">${professional.nome}</option>`).join("")
+            : "<option value=\"\">Nenhum profissional disponível</option>";
+        } catch (error) {
+          document.querySelector("#id_servico").innerHTML = "<option value=\"\">Inicie o servidor para carregar</option>";
+          document.querySelector("#id_profissional").innerHTML = "<option value=\"\">Inicie o servidor para carregar</option>";
+        }
+      }
+
+      loadOptions();
+
+      form.addEventListener("submit", async (event) => {
+        event.preventDefault();
+        const submitButton = form.querySelector("button[type='submit']");
+        submitButton.disabled = true;
+        message.className = "form-message";
+        try {
+          const response = await fetch(`${apiUrl}/agendamentos`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(Object.fromEntries(new FormData(form)))
+          });
+          const result = await response.json();
+          if (!response.ok) throw new Error(result.error || "Não foi possível agendar.");
+          message.className = "form-message success";
+          message.textContent = "Horário solicitado com sucesso!";
+          form.reset();
+        } catch (error) {
+          message.className = "form-message error";
+          message.textContent = error.message.includes("Failed to fetch") ? "Inicie o servidor para fazer o agendamento." : error.message;
+        } finally {
+          submitButton.disabled = false;
+        }
+      });
+
+      menuButton.addEventListener("click", () => {
+        const isOpen = menuButton.getAttribute("aria-expanded") === "true";
+        menuButton.setAttribute("aria-expanded", String(!isOpen));
+        nav.style.display = isOpen ? "none" : "flex";
+        nav.style.flexDirection = "column";
+        nav.style.position = "absolute";
+        nav.style.right = "18px";
+        nav.style.top = "70px";
+        nav.style.background = "#fffdf8";
+        nav.style.padding = "18px";
+        nav.style.borderRadius = "12px";
+        nav.style.boxShadow = "0 12px 30px rgba(18, 61, 66, .14)";
+      });
+    </script>
+  </body>
+</html>
