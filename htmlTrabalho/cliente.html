@@ -39,34 +39,6 @@
             <p class="microcopy">Atendimento com hora marcada e cuidado em cada etapa.</p>
           </div>
 
-          <div class="booking-card" id="agendar">
-            <div class="card-top">
-              <h2>Agende seu cuidado.</h2>
-              <span class="status-dot" aria-label="Sistema online"></span>
-            </div>
-            <form id="client-form">
-              <div class="form-grid">
-                <div class="field full">
-                  <label for="nome">Seu nome</label>
-                  <input id="nome" name="nome" type="text" placeholder="Como podemos chamar você?" required>
-                </div>
-                <div class="field">
-                  <label for="telefone">Telefone</label>
-                  <input id="telefone" name="telefone" type="tel" placeholder="(00) 00000-0000" required>
-                </div>
-                <div class="field">
-                  <label for="email">E-mail</label>
-                  <input id="email" name="email" type="email" placeholder="voce@email.com" required>
-                </div>
-                <div class="field full">
-                  <label for="senha_hash">Crie uma senha</label>
-                  <input id="senha_hash" name="senha_hash" type="password" placeholder="Mínimo de 6 caracteres" minlength="6" required>
-                </div>
-              </div>
-              <button class="button button-primary form-button" type="submit">Quero ser cliente <span aria-hidden="true">→</span></button>
-              <div class="form-message" id="form-message" role="status" aria-live="polite"></div>
-            </form>
-          </div>
         </div>
       </section>
 
@@ -94,40 +66,8 @@
     </footer>
 
     <script>
-      const form = document.querySelector("#client-form");
-      const message = document.querySelector("#form-message");
       const menuButton = document.querySelector(".menu-toggle");
       const nav = document.querySelector(".nav");
-      const apiUrl = "http://localhost:3000";
-
-      form.addEventListener("submit", async (event) => {
-        event.preventDefault();
-        const submitButton = form.querySelector("button[type='submit']");
-        const formData = Object.fromEntries(new FormData(form));
-        submitButton.disabled = true;
-        submitButton.textContent = "Criando seu cadastro...";
-        message.className = "form-message";
-        message.textContent = "";
-
-        try {
-          const response = await fetch(`${apiUrl}/clientes`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(formData)
-          });
-          const result = await response.json();
-          if (!response.ok) throw new Error(result.error || "Não foi possível concluir o cadastro.");
-          message.className = "form-message success";
-          message.textContent = "Cadastro realizado. Seu próximo momento começa agora.";
-          form.reset();
-        } catch (error) {
-          message.className = "form-message error";
-          message.textContent = error.message.includes("Failed to fetch") ? "Não encontramos o servidor. Inicie o backend e tente novamente." : error.message;
-        } finally {
-          submitButton.disabled = false;
-          submitButton.innerHTML = "Quero ser cliente <span aria-hidden='true'>→</span>";
-        }
-      });
 
       menuButton.addEventListener("click", () => {
         const isOpen = menuButton.getAttribute("aria-expanded") === "true";
