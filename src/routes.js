@@ -1,4 +1,5 @@
 const express = require('express');
+const bcrypt = require('bcrypt');
 const routes = express.Router();
 
 const db = require('./database/connection');
@@ -8,9 +9,16 @@ const AgendamentoController = require('./controller/agendamentoController');
 
 routes.post('/clientes', async (req, res) => {
   try {
-    const { nome, telefone, email, senha_hash } = req.body;
-    if (!nome || !telefone || !email || !senha_hash) return res.status(400).json({ error: "Preencha todos os campos obrigatórios." });
-    await db('CLIENTE').insert({ nome, telefone, email, senha_hash });
+    const { nome, telefone, email, senha } = req.body;
+    if (!nome || !telefone || !email || !senha) return res.status(400).json({ error: "Preencha todos os campos obrigatórios." });
+    if (senha.length < 6) return res.status(400).json({ error: "A senha deve ter pelo menos 6 caracteres." });
+
+    const emailNormalizado = email.trim().toLowerCase();
+    const clienteExistente = await db('CLIENTE').where('email', emailNormalizado).first();
+    if (clienteExistente) return res.status(409).json({ error: "Este e-mail já está cadastrado." });
+
+    const senha_hash = await bcrypt.hash(senha, 10);
+    await db('CLIENTE').insert({ nome: nome.trim(), telefone: telefone.trim(), email: emailNormalizado, senha_hash });
     return res.status(201).json({ message: "Cliente cadastrado com sucesso! 🎉" });
   } catch (error) {
     return res.status(500).json({ error: error.message });

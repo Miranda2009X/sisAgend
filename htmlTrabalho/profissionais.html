@@ -74,6 +74,19 @@
       </div>
     </footer>
 
+    <dialog class="cancellation-dialog" id="cancellation-dialog">
+      <form method="dialog" id="cancellation-form">
+        <h2>Cancelar reserva</h2>
+        <p>Informe por que este horário está sendo cancelado.</p>
+        <label for="cancellation-reason">Justificativa</label>
+        <textarea id="cancellation-reason" rows="4" maxlength="500" required placeholder="Digite a justificativa..."></textarea>
+        <div class="dialog-actions">
+          <button class="appointment-action" type="button" id="close-cancellation">Voltar</button>
+          <button class="appointment-action cancel" type="submit">Confirmar cancelamento</button>
+        </div>
+      </form>
+    </dialog>
+
     <script>
       const apiUrl = "http://localhost:3000";
       const list = document.querySelector("#professional-list");
@@ -86,6 +99,11 @@
       const todayButton = document.querySelector("#today-button");
       const menuButton = document.querySelector(".menu-toggle");
       const nav = document.querySelector(".nav");
+      const cancellationDialog = document.querySelector("#cancellation-dialog");
+      const cancellationForm = document.querySelector("#cancellation-form");
+      const cancellationReason = document.querySelector("#cancellation-reason");
+      const closeCancellation = document.querySelector("#close-cancellation");
+      let appointmentToCancel = null;
 
       function formatTime(value) {
         return new Date(value).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
@@ -135,21 +153,15 @@
             `).join("")
           : '<p class="empty-state">Nenhuma profissional cadastrada ainda.</p>';
         list.querySelectorAll(".appointment-action").forEach(button => {
-          button.addEventListener("click", () => updateAppointmentStatus(button));
+          button.addEventListener("click", () => button.dataset.status === "Cancelado" ? openCancellation(button) : updateAppointmentStatus(button));
         });
       }
 
       async function updateAppointmentStatus(button) {
         const status = button.dataset.status;
         const appointmentId = button.dataset.id;
-        let justificativaCancelamento;
-        if (status === "Cancelado") {
-          justificativaCancelamento = window.prompt("Informe o motivo do cancelamento:");
-          if (!justificativaCancelamento || !justificativaCancelamento.trim()) {
-            window.alert("A justificativa é obrigatória para cancelar a reserva.");
-            return;
-          }
-        }
+        const justificativaCancelamento = button.dataset.reason || "";
+        if (status === "Cancelado" && !justificativaCancelamento.trim()) return;
         button.disabled = true;
         try {
           const response = await fetch(`${apiUrl}/agendamentos/${appointmentId}/status`, {
@@ -166,10 +178,30 @@
         }
       }
 
+      function openCancellation(button) {
+        appointmentToCancel = button;
+        cancellationReason.value = "";
+        cancellationDialog.showModal();
+        cancellationReason.focus();
+      }
+
+      closeCancellation.addEventListener("click", () => cancellationDialog.close());
+      cancellationForm.addEventListener("submit", event => {
+        event.preventDefault();
+        const reason = cancellationReason.value.trim();
+        if (!reason) {
+          cancellationReason.focus();
+          return;
+        }
+        appointmentToCancel.dataset.reason = reason;
+        cancellationDialog.close();
+        updateAppointmentStatus(appointmentToCancel);
+      });
+
       async function loadProfessionals() {
         try {
           const data = scheduleDate.value;
-          const response = await fetch(`${apiUrl}/profissionais/escala?data=${data}`);
+          const response = await fetch(`${apiUrl}/profissionais/escala?data=${data}&atualizado=${Date.now()}`, { cache: "no-store" });
           if (!response.ok) throw new Error();
           const result = await response.json();
           renderProfessionals(result.profissionais, result.data);
@@ -199,13 +231,19 @@
         nav.style.boxShadow = "0 12px 30px rgba(18, 61, 66, .14)";
       });
 
-      scheduleDate.value = new Date().toISOString().slice(0, 10);
+      const today = new Date().toISOString().slice(0, 10);
+      scheduleDate.value = localStorage.getItem("sisagend:lastBookingDate") || today;
       scheduleDate.addEventListener("change", loadProfessionals);
       previousDay.addEventListener("click", () => changeDate(-1));
       nextDay.addEventListener("click", () => changeDate(1));
       todayButton.addEventListener("click", () => {
-        scheduleDate.value = new Date().toISOString().slice(0, 10);
+        scheduleDate.value = today;
         loadProfessionals();
+      });
+
+      window.addEventListener("pageshow", loadProfessionals);
+      document.addEventListener("visibilitychange", () => {
+        if (!document.hidden) loadProfessionals();
       });
 
       loadProfessionals();

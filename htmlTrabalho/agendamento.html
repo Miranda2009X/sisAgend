@@ -42,10 +42,10 @@
             </div>
             <div class="form-grid">
               <div class="field">
-                <label for="id_cliente">Cliente</label>
-                <select id="id_cliente" name="id_cliente" required>
-                  <option value="">Carregando clientes...</option>
-                </select>
+                <label for="cliente_nome">Nome do cliente</label>
+                <input id="cliente_nome" type="text" list="clientes-lista" placeholder="Digite o nome do cliente" autocomplete="off" required>
+                <datalist id="clientes-lista"></datalist>
+                <input id="id_cliente" name="id_cliente" type="hidden">
               </div>
               <div class="field">
                 <label for="id_profissional">Profissional</label>
@@ -60,8 +60,9 @@
                 </select>
               </div>
               <div class="field full">
-                <label for="data_agendamento">Data</label>
-                <input id="data_agendamento" type="date" required>
+                <label for="data_agendamento_display">Data (dd/mm/aaaa)</label>
+                <input id="data_agendamento_display" type="text" inputmode="numeric" placeholder="28/09/2026" maxlength="10" required>
+                <input id="data_agendamento" type="hidden">
               </div>
             </div>
             <input id="data_hora_inicio" name="data_hora_inicio" type="hidden" required>
@@ -96,6 +97,10 @@
       const form = document.querySelector("#appointment-form");
       const message = document.querySelector("#appointment-message");
       const dateInput = document.querySelector("#data_agendamento");
+      const dateDisplayInput = document.querySelector("#data_agendamento_display");
+      const clientNameInput = document.querySelector("#cliente_nome");
+      const clientIdInput = document.querySelector("#id_cliente");
+      const clientsList = document.querySelector("#clientes-lista");
       const startInput = document.querySelector("#data_hora_inicio");
       const professionalInput = document.querySelector("#id_profissional");
       const serviceInput = document.querySelector("#id_servico");
@@ -105,6 +110,7 @@
       const menuButton = document.querySelector(".menu-toggle");
       const nav = document.querySelector(".nav");
       let services = [];
+      let clients = [];
       let dailyAppointments = [];
 
       function setMinimumDate() {
@@ -112,6 +118,34 @@
         const pad = value => String(value).padStart(2, "0");
         dateInput.min = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
         dateInput.value = dateInput.min;
+        dateDisplayInput.value = `${pad(now.getDate())}/${pad(now.getMonth() + 1)}/${now.getFullYear()}`;
+      }
+
+      function parseBrazilianDate(value) {
+        const match = value.trim().match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+        if (!match) return "";
+        const [, day, month, year] = match;
+        const date = new Date(Number(year), Number(month) - 1, Number(day));
+        if (date.getFullYear() !== Number(year) || date.getMonth() !== Number(month) - 1 || date.getDate() !== Number(day)) return "";
+        return `${year}-${month}-${day}`;
+      }
+
+      function updateDate() {
+        const parsedDate = parseBrazilianDate(dateDisplayInput.value);
+        dateInput.value = parsedDate >= dateInput.min ? parsedDate : "";
+        loadAvailability();
+      }
+
+      function updateClientId() {
+        const selectedClient = clients.find(client => client.nome.trim().toLowerCase() === clientNameInput.value.trim().toLowerCase());
+        clientIdInput.value = selectedClient ? selectedClient.id_cliente : "";
+        if (!selectedClient && clientNameInput.value) {
+          message.className = "form-message error";
+          message.textContent = "Selecione um cliente cadastrado ou digite o nome exatamente como aparece nas sugestões.";
+        } else {
+          message.className = "form-message";
+          message.textContent = "";
+        }
       }
 
       function minutesFromTime(value) {
@@ -203,12 +237,10 @@
             fetch(`${apiUrl}/profissionais`)
           ]);
           if (!clientsResponse.ok || !servicesResponse.ok || !professionalsResponse.ok) throw new Error();
-          const clients = await clientsResponse.json();
+          clients = await clientsResponse.json();
           services = await servicesResponse.json();
           const professionals = await professionalsResponse.json();
-          document.querySelector("#id_cliente").innerHTML = clients.length
-            ? `<option value="">Selecione o cliente</option>${clients.map(client => `<option value="${client.id_cliente}">${client.nome}</option>`).join("")}`
-            : "<option value=\"\">Nenhum cliente disponível</option>";
+          clientsList.innerHTML = clients.map(client => `<option value="${client.nome}"></option>`).join("");
           document.querySelector("#id_servico").innerHTML = services.length
             ? services.map(service => `<option value="${service.id_servico}">${service.nome_servico} - ${service.duracao_minutos} min - R$ ${Number(service.preco).toFixed(2)}</option>`).join("")
             : "<option value=\"\">Nenhum serviço disponível</option>";
@@ -217,7 +249,8 @@
             : "<option value=\"\">Nenhum profissional disponível</option>";
           loadAvailability();
         } catch (error) {
-          document.querySelector("#id_cliente").innerHTML = "<option value=\"\">Inicie o servidor para carregar</option>";
+          clientsList.innerHTML = "";
+          clientIdInput.value = "";
           document.querySelector("#id_servico").innerHTML = "<option value=\"\">Inicie o servidor para carregar</option>";
           document.querySelector("#id_profissional").innerHTML = "<option value=\"\">Inicie o servidor para carregar</option>";
         }
@@ -225,19 +258,30 @@
 
       loadOptions();
       setMinimumDate();
-      [dateInput, professionalInput, serviceInput].forEach(input => input.addEventListener("change", () => {
+      [professionalInput, serviceInput].forEach(input => input.addEventListener("change", () => {
         startInput.value = "";
         submitButton.disabled = true;
         message.className = "form-message";
         message.textContent = "";
         loadAvailability();
       }));
+      dateDisplayInput.addEventListener("change", updateDate);
+      dateDisplayInput.addEventListener("blur", updateDate);
+      clientNameInput.addEventListener("input", updateClientId);
+      clientNameInput.addEventListener("change", updateClientId);
 
       form.addEventListener("submit", async (event) => {
         event.preventDefault();
         submitButton.disabled = true;
         message.className = "form-message";
         try {
+          updateClientId();
+          if (!clientIdInput.value) {
+            throw new Error("Selecione um cliente cadastrado.");
+          }
+          if (!dateInput.value) {
+            throw new Error("Digite uma data válida no formato dd/mm/aaaa, a partir de hoje.");
+          }
           if (!startInput.value) {
             throw new Error("Selecione um horário disponível na tabela.");
           }
@@ -250,8 +294,10 @@
           if (!response.ok) throw new Error(result.error || "Não foi possível agendar.");
           message.className = "form-message success";
           message.textContent = "Horário solicitado com sucesso!";
+          localStorage.setItem("sisagend:lastBookingDate", dateInput.value);
           form.reset();
-          dateInput.value = new Date().toISOString().slice(0, 10);
+          setMinimumDate();
+          clientIdInput.value = "";
           startInput.value = "";
           loadAvailability();
         } catch (error) {
