@@ -156,6 +156,15 @@
       .appointment-row strong { font-size: 13px; }
       .appointment-row span { color: var(--ink-soft); font-size: 12px; }
       .appointment-status { font-size: 10px; font-weight: 700; text-transform: uppercase; }
+      .appointment-footer { align-items: center; display: flex; gap: 10px; justify-content: space-between; margin-top: 4px; }
+      .appointment-actions { display: flex; gap: 6px; }
+      .appointment-action { background: transparent; border: 1px solid var(--line); border-radius: 6px; cursor: pointer; font-size: 10px; font-weight: 700; padding: 5px 8px; }
+      .appointment-action:hover { transform: translateY(-1px); }
+      .appointment-action.confirm { border-color: #8fc19e; color: #27633e; }
+      .appointment-action.confirm:hover { background: #e2f1e5; }
+      .appointment-action.cancel { border-color: #e2a194; color: var(--coral-dark); }
+      .appointment-action.cancel:hover { background: #fbe2dc; }
+      .appointment-action:disabled { cursor: wait; opacity: .55; }
       .status-cancelado { color: var(--coral-dark); }
       .status-confirmado, .status-concluido { color: #4e8c68; }
       .no-appointments { color: var(--ink-soft); font-size: 13px; margin: 0; }

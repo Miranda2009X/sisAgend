@@ -115,13 +115,55 @@
                     <div class="appointment-row">
                       <strong>${formatTime(appointment.data_hora_inicio)} - ${formatTime(appointment.data_hora_fim)}</strong>
                       <span>${appointment.nome_servico} · ${appointment.cliente_nome}</span>
-                      <small class="appointment-status status-${appointment.status.toLowerCase()}">${appointment.status}</small>
+                      <div class="appointment-footer">
+                        <small class="appointment-status status-${appointment.status.toLowerCase()}">${appointment.status}</small>
+                        ${appointment.status === "Pendente" ? `
+                          <div class="appointment-actions">
+                            <button class="appointment-action confirm" type="button" data-id="${appointment.id_agendamento}" data-status="Confirmado">Confirmar</button>
+                            <button class="appointment-action cancel" type="button" data-id="${appointment.id_agendamento}" data-status="Cancelado">Cancelar</button>
+                          </div>
+                        ` : appointment.status === "Confirmado" ? `
+                          <div class="appointment-actions">
+                            <button class="appointment-action cancel" type="button" data-id="${appointment.id_agendamento}" data-status="Cancelado">Cancelar</button>
+                          </div>
+                        ` : ""}
+                      </div>
                     </div>
                   `).join("") : '<p class="no-appointments">Nenhum horário reservado.</p>'}
                 </div>
               </article>
             `).join("")
           : '<p class="empty-state">Nenhuma profissional cadastrada ainda.</p>';
+        list.querySelectorAll(".appointment-action").forEach(button => {
+          button.addEventListener("click", () => updateAppointmentStatus(button));
+        });
+      }
+
+      async function updateAppointmentStatus(button) {
+        const status = button.dataset.status;
+        const appointmentId = button.dataset.id;
+        let justificativaCancelamento;
+        if (status === "Cancelado") {
+          justificativaCancelamento = window.prompt("Informe o motivo do cancelamento:");
+          if (!justificativaCancelamento || !justificativaCancelamento.trim()) {
+            window.alert("A justificativa é obrigatória para cancelar a reserva.");
+            return;
+          }
+        }
+        button.disabled = true;
+        try {
+          const response = await fetch(`${apiUrl}/agendamentos/${appointmentId}/status`, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ status, justificativa_cancelamento: justificativaCancelamento })
+          });
+          const result = await response.json();
+          if (!response.ok) throw new Error(result.error || "Não foi possível atualizar a reserva.");
+          await loadProfessionals();
+        } catch (error) {
+          button.disabled = false;
+          window.alert(error.message.includes("Failed to fetch") ? "Inicie o servidor para atualizar a reserva." : error.message);
+        }
       }
 
       async function loadProfessionals() {

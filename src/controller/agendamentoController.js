@@ -92,13 +92,19 @@ module.exports = {
   async atualizarStatus(req, res) {
     try {
       const { id } = req.params;
-      const { status } = req.body;
+      const { status, justificativa_cancelamento } = req.body;
 
       if (!['Pendente', 'Confirmado', 'Concluido', 'Cancelado'].includes(status)) {
         return res.status(400).json({ error: "Status inválido." });
       }
+      if (status === 'Cancelado' && !justificativa_cancelamento?.trim()) {
+        return res.status(400).json({ error: "A justificativa é obrigatória para cancelar a reserva." });
+      }
 
-      await db('AGENDAMENTO').where('id_agendamento', id).update({ status });
+      await db('AGENDAMENTO').where('id_agendamento', id).update({
+        status,
+        justificativa_cancelamento: status === 'Cancelado' ? justificativa_cancelamento.trim() : null
+      });
       return res.json({ message: `Status do agendamento atualizado para ${status}.` });
     } catch (error) {
       return res.status(500).json({ error: error.message });
