@@ -51,6 +51,40 @@ routes.post('/servicos', async (req, res) => {
 });
 
 routes.get('/clientes', ClienteController.listar);
+routes.get('/profissionais/escala', async (req, res) => {
+  try {
+    const data = req.query.data || new Date().toISOString().slice(0, 10);
+    const [profissionais, agendamentos] = await Promise.all([
+      db('PROFISSIONAL')
+        .select('id_professional as id_profissional', 'nome', 'telefone', 'ativo')
+        .orderBy('nome'),
+      db('AGENDAMENTO')
+        .join('CLIENTE', 'AGENDAMENTO.id_cliente', '=', 'CLIENTE.id_cliente')
+        .join('PROFISSIONAL', 'AGENDAMENTO.id_profissional', '=', 'PROFISSIONAL.id_professional')
+        .join('SERVICO', 'AGENDAMENTO.id_servico', '=', 'SERVICO.id_servico')
+        .whereLike('AGENDAMENTO.data_hora_inicio', `${data}%`)
+        .select(
+          'AGENDAMENTO.*',
+          'CLIENTE.nome as cliente_nome',
+          'PROFISSIONAL.nome as profissional_nome',
+          'SERVICO.nome_servico'
+        )
+        .orderBy('AGENDAMENTO.data_hora_inicio')
+    ]);
+
+    return res.json({
+      data,
+      profissionais: profissionais.map(profissional => ({
+        ...profissional,
+        agendamentos: agendamentos.filter(
+          agendamento => agendamento.id_profissional === profissional.id_profissional
+        )
+      }))
+    });
+  } catch (error) {
+    return res.status(500).json({ error: error.message });
+  }
+});
 routes.get('/profissionais', async (req, res) => {
   try {
     const profissionais = await db('PROFISSIONAL')

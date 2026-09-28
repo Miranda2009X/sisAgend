@@ -42,8 +42,10 @@
             </div>
             <div class="form-grid">
               <div class="field">
-                <label for="id_cliente">Código do cliente</label>
-                <input id="id_cliente" name="id_cliente" type="number" min="1" placeholder="Ex.: 1" required>
+                <label for="id_cliente">Cliente</label>
+                <select id="id_cliente" name="id_cliente" required>
+                  <option value="">Carregando clientes...</option>
+                </select>
               </div>
               <div class="field">
                 <label for="id_profissional">Profissional</label>
@@ -58,12 +60,8 @@
                 </select>
               </div>
               <div class="field">
-                <label for="data_hora_inicio">Início</label>
+                <label for="data_hora_inicio">Data e horário</label>
                 <input id="data_hora_inicio" name="data_hora_inicio" type="datetime-local" required>
-              </div>
-              <div class="field">
-                <label for="data_hora_fim">Fim</label>
-                <input id="data_hora_fim" name="data_hora_fim" type="datetime-local" required>
               </div>
             </div>
             <button class="button button-primary form-button" type="submit">Confirmar agendamento <span aria-hidden="true">→</span></button>
@@ -84,31 +82,45 @@
       const apiUrl = "http://localhost:3000";
       const form = document.querySelector("#appointment-form");
       const message = document.querySelector("#appointment-message");
+      const startInput = document.querySelector("#data_hora_inicio");
       const menuButton = document.querySelector(".menu-toggle");
       const nav = document.querySelector(".nav");
 
+      function setMinimumStart() {
+        const now = new Date();
+        const pad = value => String(value).padStart(2, "0");
+        startInput.min = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}T${pad(now.getHours())}:${pad(now.getMinutes())}`;
+      }
+
       async function loadOptions() {
         try {
-          const [servicesResponse, professionalsResponse] = await Promise.all([
+          const [clientsResponse, servicesResponse, professionalsResponse] = await Promise.all([
+            fetch(`${apiUrl}/clientes`),
             fetch(`${apiUrl}/servicos`),
             fetch(`${apiUrl}/profissionais`)
           ]);
-          if (!servicesResponse.ok || !professionalsResponse.ok) throw new Error();
+          if (!clientsResponse.ok || !servicesResponse.ok || !professionalsResponse.ok) throw new Error();
+          const clients = await clientsResponse.json();
           const services = await servicesResponse.json();
           const professionals = await professionalsResponse.json();
+          document.querySelector("#id_cliente").innerHTML = clients.length
+            ? `<option value="">Selecione o cliente</option>${clients.map(client => `<option value="${client.id_cliente}">${client.nome}</option>`).join("")}`
+            : "<option value=\"\">Nenhum cliente disponível</option>";
           document.querySelector("#id_servico").innerHTML = services.length
-            ? services.map(service => `<option value="${service.id_servico}">${service.nome_servico} - R$ ${Number(service.preco).toFixed(2)}</option>`).join("")
+            ? services.map(service => `<option value="${service.id_servico}">${service.nome_servico} - ${service.duracao_minutos} min - R$ ${Number(service.preco).toFixed(2)}</option>`).join("")
             : "<option value=\"\">Nenhum serviço disponível</option>";
           document.querySelector("#id_profissional").innerHTML = professionals.length
             ? professionals.map(professional => `<option value="${professional.id_profissional}">${professional.nome}</option>`).join("")
             : "<option value=\"\">Nenhum profissional disponível</option>";
         } catch (error) {
+          document.querySelector("#id_cliente").innerHTML = "<option value=\"\">Inicie o servidor para carregar</option>";
           document.querySelector("#id_servico").innerHTML = "<option value=\"\">Inicie o servidor para carregar</option>";
           document.querySelector("#id_profissional").innerHTML = "<option value=\"\">Inicie o servidor para carregar</option>";
         }
       }
 
       loadOptions();
+      setMinimumStart();
 
       form.addEventListener("submit", async (event) => {
         event.preventDefault();

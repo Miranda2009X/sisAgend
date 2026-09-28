@@ -33,32 +33,35 @@
               <span class="eyebrow">Quem cuida de você</span>
               <h1>Profissionais.</h1>
             </div>
-            <p>Conheça nossa equipe e escolha quem vai acompanhar o seu próximo visual.</p>
+            <p>Visualize a escala do dia e acompanhe os horários reservados de cada profissional.</p>
           </div>
 
           <div class="professionals-layout">
-            <div class="professional-grid" id="professional-list" aria-live="polite">
-              <p class="empty-state">Carregando profissionais...</p>
+            <div class="schedule-board">
+              <div class="schedule-toolbar">
+                <div>
+                  <span class="eyebrow">Escala diária</span>
+                  <h2 id="schedule-title">Agenda do dia</h2>
+                </div>
+                <div class="schedule-controls">
+                  <button class="date-nav" id="previous-day" type="button" aria-label="Dia anterior" title="Dia anterior">←</button>
+                  <label class="date-filter" for="schedule-date">Data
+                    <input id="schedule-date" type="date">
+                  </label>
+                  <button class="date-nav" id="next-day" type="button" aria-label="Próximo dia" title="Próximo dia">→</button>
+                  <button class="today-button" id="today-button" type="button">Hoje</button>
+                </div>
+              </div>
+              <div class="schedule-metrics" id="schedule-metrics" aria-live="polite">
+                <div class="metric"><span>Profissionais</span><strong>--</strong></div>
+                <div class="metric"><span>Atendimentos</span><strong>--</strong></div>
+                <div class="metric"><span>Confirmados</span><strong>--</strong></div>
+              </div>
+              <div class="schedule-summary" id="schedule-summary">Carregando escala...</div>
+              <div class="professional-grid" id="professional-list" aria-live="polite">
+                <p class="empty-state">Carregando escala...</p>
+              </div>
             </div>
-
-            <form class="schedule-card" id="professional-form">
-              <div class="card-top">
-                <h2>Nova profissional</h2>
-                <span class="status-dot" aria-label="Sistema online"></span>
-              </div>
-              <div class="form-grid">
-                <div class="field full">
-                  <label for="nome">Nome</label>
-                  <input id="nome" name="nome" type="text" placeholder="Ex.: Natália Souza" required>
-                </div>
-                <div class="field full">
-                  <label for="telefone">Telefone</label>
-                  <input id="telefone" name="telefone" type="tel" placeholder="(41) 99999-9999" required>
-                </div>
-              </div>
-              <button class="button button-primary form-button" type="submit">Cadastrar profissional <span aria-hidden="true">→</span></button>
-              <div class="form-message" id="professional-message" role="status" aria-live="polite"></div>
-            </form>
           </div>
         </div>
       </section>
@@ -74,19 +77,48 @@
     <script>
       const apiUrl = "http://localhost:3000";
       const list = document.querySelector("#professional-list");
-      const form = document.querySelector("#professional-form");
-      const message = document.querySelector("#professional-message");
+      const scheduleDate = document.querySelector("#schedule-date");
+      const scheduleTitle = document.querySelector("#schedule-title");
+      const scheduleSummary = document.querySelector("#schedule-summary");
+      const scheduleMetrics = document.querySelector("#schedule-metrics");
+      const previousDay = document.querySelector("#previous-day");
+      const nextDay = document.querySelector("#next-day");
+      const todayButton = document.querySelector("#today-button");
       const menuButton = document.querySelector(".menu-toggle");
       const nav = document.querySelector(".nav");
 
-      function renderProfessionals(professionals) {
+      function formatTime(value) {
+        return new Date(value).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+      }
+
+      function renderProfessionals(professionals, data) {
+        const totalAppointments = professionals.reduce((total, professional) => total + professional.agendamentos.length, 0);
+        const activeProfessionals = professionals.filter(professional => professional.ativo).length;
+        const confirmedAppointments = professionals.reduce((total, professional) => total + professional.agendamentos.filter(appointment => appointment.status === "Confirmado").length, 0);
+        scheduleTitle.textContent = new Date(`${data}T12:00:00`).toLocaleDateString("pt-BR", { day: "2-digit", month: "long" });
+        scheduleMetrics.innerHTML = `
+          <div class="metric"><span>Profissionais ativas</span><strong>${activeProfessionals}<small>/${professionals.length}</small></strong></div>
+          <div class="metric"><span>Atendimentos</span><strong>${totalAppointments}</strong></div>
+          <div class="metric"><span>Confirmados</span><strong>${confirmedAppointments}</strong></div>
+        `;
+        scheduleSummary.textContent = totalAppointments ? "Acompanhe os horários reservados por profissional." : "A agenda está livre neste dia.";
         list.innerHTML = professionals.length
           ? professionals.map(professional => `
               <article class="professional-card">
-                <div class="professional-avatar" aria-hidden="true">${professional.nome.charAt(0).toUpperCase()}</div>
-                <h3>${professional.nome}</h3>
-                <p>${professional.telefone}</p>
-                <div class="professional-status">${professional.ativo ? "Disponível" : "Indisponível"}</div>
+                <div class="professional-card-header">
+                  <div class="professional-avatar" aria-hidden="true">${professional.nome.charAt(0).toUpperCase()}</div>
+                  <div><h3>${professional.nome}</h3><p>${professional.telefone}</p></div>
+                  <span class="professional-status ${professional.ativo ? "" : "inactive"}">${professional.ativo ? "Ativa" : "Inativa"}</span>
+                </div>
+                <div class="appointments">
+                  ${professional.agendamentos.length ? professional.agendamentos.map(appointment => `
+                    <div class="appointment-row">
+                      <strong>${formatTime(appointment.data_hora_inicio)} - ${formatTime(appointment.data_hora_fim)}</strong>
+                      <span>${appointment.nome_servico} · ${appointment.cliente_nome}</span>
+                      <small class="appointment-status status-${appointment.status.toLowerCase()}">${appointment.status}</small>
+                    </div>
+                  `).join("") : '<p class="no-appointments">Nenhum horário reservado.</p>'}
+                </div>
               </article>
             `).join("")
           : '<p class="empty-state">Nenhuma profissional cadastrada ainda.</p>';
@@ -94,38 +126,22 @@
 
       async function loadProfessionals() {
         try {
-          const response = await fetch(`${apiUrl}/profissionais`);
+          const data = scheduleDate.value;
+          const response = await fetch(`${apiUrl}/profissionais/escala?data=${data}`);
           if (!response.ok) throw new Error();
-          renderProfessionals(await response.json());
+          const result = await response.json();
+          renderProfessionals(result.profissionais, result.data);
         } catch (error) {
           list.innerHTML = '<p class="empty-state">Inicie o servidor para carregar as profissionais.</p>';
         }
       }
 
-      form.addEventListener("submit", async (event) => {
-        event.preventDefault();
-        const submitButton = form.querySelector("button[type='submit']");
-        submitButton.disabled = true;
-        message.className = "form-message";
-        try {
-          const response = await fetch(`${apiUrl}/profissionais`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(Object.fromEntries(new FormData(form)))
-          });
-          const result = await response.json();
-          if (!response.ok) throw new Error(result.error || "Não foi possível cadastrar.");
-          message.className = "form-message success";
-          message.textContent = "Profissional cadastrada com sucesso!";
-          form.reset();
-          loadProfessionals();
-        } catch (error) {
-          message.className = "form-message error";
-          message.textContent = error.message.includes("Failed to fetch") ? "Inicie o servidor para cadastrar." : error.message;
-        } finally {
-          submitButton.disabled = false;
-        }
-      });
+      function changeDate(days) {
+        const date = new Date(`${scheduleDate.value}T12:00:00`);
+        date.setDate(date.getDate() + days);
+        scheduleDate.value = date.toISOString().slice(0, 10);
+        loadProfessionals();
+      }
 
       menuButton.addEventListener("click", () => {
         const isOpen = menuButton.getAttribute("aria-expanded") === "true";
@@ -139,6 +155,15 @@
         nav.style.padding = "18px";
         nav.style.borderRadius = "12px";
         nav.style.boxShadow = "0 12px 30px rgba(18, 61, 66, .14)";
+      });
+
+      scheduleDate.value = new Date().toISOString().slice(0, 10);
+      scheduleDate.addEventListener("change", loadProfessionals);
+      previousDay.addEventListener("click", () => changeDate(-1));
+      nextDay.addEventListener("click", () => changeDate(1));
+      todayButton.addEventListener("click", () => {
+        scheduleDate.value = new Date().toISOString().slice(0, 10);
+        loadProfessionals();
       });
 
       loadProfessionals();

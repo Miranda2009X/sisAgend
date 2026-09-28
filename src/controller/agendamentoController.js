@@ -3,11 +3,45 @@ const db = require('../database/connection');
 module.exports = {
   async agendar(req, res) {
     try {
-      const { id_cliente, id_profissional, id_servico, data_hora_inicio, data_hora_fim } = req.body;
+      const { id_cliente, id_profissional, id_servico, data_hora_inicio } = req.body;
 
-      if (!id_cliente || !id_profissional || !id_servico || !data_hora_inicio || !data_hora_fim) {
-        return res.status(400).json({ error: "Todos os campos do agendamento são obrigatórios." });
+      const missingFields = [
+        !id_cliente && 'cliente',
+        !id_profissional && 'profissional',
+        !id_servico && 'serviço',
+        !data_hora_inicio && 'data e horário'
+      ].filter(Boolean);
+
+      if (missingFields.length) {
+        return res.status(400).json({ error: `Preencha: ${missingFields.join(', ')}.` });
       }
+
+      const servico = await db('SERVICO')
+        .select('duracao_minutos')
+        .where('id_servico', id_servico)
+        .first();
+
+      if (!servico) {
+        return res.status(400).json({ error: "Serviço não encontrado." });
+      }
+
+      const inicio = new Date(data_hora_inicio);
+      if (Number.isNaN(inicio.getTime())) {
+        return res.status(400).json({ error: "Data e horário inválidos." });
+      }
+      if (inicio < new Date()) {
+        return res.status(400).json({ error: "Escolha uma data e horário a partir de agora." });
+      }
+      if (!Number.isFinite(Number(servico.duracao_minutos)) || Number(servico.duracao_minutos) <= 0) {
+        return res.status(400).json({ error: "Este serviço não possui uma duração válida." });
+      }
+
+      const fim = new Date(inicio.getTime() + Number(servico.duracao_minutos) * 60000);
+      const formatDateTime = date => {
+        const pad = value => String(value).padStart(2, '0');
+        return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+      };
+      const data_hora_fim = formatDateTime(fim);
 
       const conflito = await db('AGENDAMENTO')
         .where('id_profissional', id_profissional)
