@@ -32,6 +32,9 @@ module.exports = {
       if (inicio < new Date()) {
         return res.status(400).json({ error: "Escolha uma data e horário a partir de agora." });
       }
+      if (inicio.getMinutes() !== 0) {
+        return res.status(400).json({ error: "Escolha um horário com hora inteira, como 09:00 ou 14:00." });
+      }
       if (!Number.isFinite(Number(servico.duracao_minutos)) || Number(servico.duracao_minutos) <= 0) {
         return res.status(400).json({ error: "Este serviço não possui uma duração válida." });
       }

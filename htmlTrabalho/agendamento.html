@@ -59,12 +59,25 @@
                   <option value="">Carregando serviços...</option>
                 </select>
               </div>
-              <div class="field">
-                <label for="data_hora_inicio">Data e horário</label>
-                <input id="data_hora_inicio" name="data_hora_inicio" type="datetime-local" required>
+              <div class="field full">
+                <label for="data_agendamento">Data</label>
+                <input id="data_agendamento" type="date" required>
               </div>
             </div>
-            <button class="button button-primary form-button" type="submit">Confirmar agendamento <span aria-hidden="true">→</span></button>
+            <input id="data_hora_inicio" name="data_hora_inicio" type="hidden" required>
+            <div class="availability-panel">
+              <div class="availability-heading">
+                <div><span class="eyebrow">Horários</span><h3>Escolha um horário disponível</h3></div>
+                <span id="availability-summary">Selecione profissional, serviço e data</span>
+              </div>
+              <div class="availability-table-wrap">
+                <table class="availability-table">
+                  <thead><tr><th>Horário</th><th>Status</th><th>Ação</th></tr></thead>
+                  <tbody id="availability-list"><tr><td colspan="3" class="availability-empty">Selecione os dados acima para ver a agenda.</td></tr></tbody>
+                </table>
+              </div>
+            </div>
+            <button class="button button-primary form-button" id="appointment-submit" type="submit" disabled>Confirmar agendamento <span aria-hidden="true">→</span></button>
             <div class="form-message" id="appointment-message" role="status" aria-live="polite"></div>
           </form>
         </div>
@@ -82,14 +95,104 @@
       const apiUrl = "http://localhost:3000";
       const form = document.querySelector("#appointment-form");
       const message = document.querySelector("#appointment-message");
+      const dateInput = document.querySelector("#data_agendamento");
       const startInput = document.querySelector("#data_hora_inicio");
+      const professionalInput = document.querySelector("#id_profissional");
+      const serviceInput = document.querySelector("#id_servico");
+      const availabilityList = document.querySelector("#availability-list");
+      const availabilitySummary = document.querySelector("#availability-summary");
+      const submitButton = document.querySelector("#appointment-submit");
       const menuButton = document.querySelector(".menu-toggle");
       const nav = document.querySelector(".nav");
+      let services = [];
+      let dailyAppointments = [];
 
-      function setMinimumStart() {
+      function setMinimumDate() {
         const now = new Date();
         const pad = value => String(value).padStart(2, "0");
-        startInput.min = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}T${pad(now.getHours())}:${pad(now.getMinutes())}`;
+        dateInput.min = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+        dateInput.value = dateInput.min;
+      }
+
+      function minutesFromTime(value) {
+        const [hours, minutes] = value.split(":").map(Number);
+        return hours * 60 + minutes;
+      }
+
+      function formatDuration(minutes) {
+        return `${minutes >= 60 ? `${Math.floor(minutes / 60)}h` : ""}${minutes % 60 ? ` ${minutes % 60}min` : ""}`.trim();
+      }
+
+      function formatTime(value) {
+        return new Date(value).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+      }
+
+      function formatTimeRange(start, end) {
+        const duration = Math.round((new Date(end) - new Date(start)) / 60000);
+        return `${formatTime(start)}-${formatTime(end)} (${formatDuration(duration)})`;
+      }
+
+      function renderAvailability() {
+        const selectedService = services.find(service => String(service.id_servico) === serviceInput.value);
+        const selectedProfessional = professionalInput.value;
+        const selectedDate = dateInput.value;
+        if (!selectedService || !selectedProfessional || !selectedDate) {
+          availabilityList.innerHTML = '<tr><td colspan="3" class="availability-empty">Selecione os dados acima para ver a agenda.</td></tr>';
+          availabilitySummary.textContent = "Selecione profissional, serviço e data";
+          submitButton.disabled = true;
+          return;
+        }
+
+        const duration = Number(selectedService.duracao_minutos);
+        const selectedStart = startInput.value;
+        const selectedStartMinutes = selectedStart ? minutesFromTime(selectedStart.slice(11, 16)) : null;
+        const selectedEndMinutes = selectedStartMinutes === null ? null : selectedStartMinutes + duration;
+        const slots = [];
+        for (let minutes = 8 * 60; minutes < 18 * 60; minutes += 60) {
+          const hour = String(Math.floor(minutes / 60)).padStart(2, "0");
+          const minute = String(minutes % 60).padStart(2, "0");
+          const start = `${selectedDate}T${hour}:${minute}`;
+          const endMinutes = minutes + duration;
+          const end = `${selectedDate}T${String(Math.floor(endMinutes / 60)).padStart(2, "0")}:${String(endMinutes % 60).padStart(2, "0")}`;
+          const occupiedBy = dailyAppointments.find(appointment => appointment.status !== "Cancelado" && new Date(appointment.data_hora_inicio) < new Date(end) && new Date(appointment.data_hora_fim) > new Date(start));
+          const occupied = Boolean(occupiedBy);
+          const inPast = new Date(start) < new Date();
+          const selected = selectedStart === start;
+          const previewBlocked = selectedStartMinutes !== null && minutes > selectedStartMinutes && minutes < selectedEndMinutes;
+          const occupiedDetail = occupiedBy ? `${occupiedBy.nome_servico} · ${formatTimeRange(occupiedBy.data_hora_inicio, occupiedBy.data_hora_fim)} · ${occupiedBy.cliente_nome}` : "";
+          const rowClass = occupied || inPast ? "slot-unavailable" : previewBlocked ? "slot-preview" : selected ? "slot-selected" : "";
+          const slotStatus = inPast ? "Encerrado" : occupied ? "Ocupado" : selected ? "Início escolhido" : previewBlocked ? "Neste atendimento" : "Disponível";
+          const slotAction = occupied || inPast || previewBlocked ? '<button class="slot-button slot-disabled" type="button" disabled>Bloqueado</button>' : selected ? '<span class="slot-locked">Selecionado</span>' : `<button class="slot-button" type="button" data-start="${start}">Selecionar</button>`;
+          slots.push(`<tr class="${rowClass}"><td><strong>${hour}:${minute}</strong><small>até ${end.slice(-5)}</small></td><td><span class="slot-status">${slotStatus}</span>${occupied ? `<small class="slot-detail">${occupiedDetail}</small>` : previewBlocked ? `<small class="slot-detail">${selectedService.nome_servico} · ${formatDuration(duration)}</small>` : ""}</td><td>${slotAction}</td></tr>`);
+        }
+        availabilityList.innerHTML = slots.join("");
+        submitButton.disabled = !selectedStart;
+        availabilitySummary.textContent = selectedStart
+          ? `${selectedService.nome_servico} ocupa ${formatDuration(duration)} a partir de ${selectedStart.slice(11)}`
+          : `${dailyAppointments.filter(appointment => appointment.status !== "Cancelado").length} reserva(s) no dia`;
+        availabilityList.querySelectorAll(".slot-button").forEach(button => button.addEventListener("click", () => {
+          startInput.value = button.dataset.start;
+          renderAvailability();
+          message.className = "form-message";
+          message.textContent = `Horário selecionado: ${button.dataset.start.slice(11)}`;
+        }));
+      }
+
+      async function loadAvailability() {
+        dailyAppointments = [];
+        availabilityList.innerHTML = '<tr><td colspan="3" class="availability-empty">Carregando horários...</td></tr>';
+        availabilitySummary.textContent = "Atualizando disponibilidade";
+        submitButton.disabled = true;
+        if (!dateInput.value || !professionalInput.value) return renderAvailability();
+        try {
+          const response = await fetch(`${apiUrl}/agendamentos?data=${dateInput.value}`);
+          if (!response.ok) throw new Error();
+          dailyAppointments = (await response.json()).filter(appointment => String(appointment.id_profissional) === professionalInput.value);
+          renderAvailability();
+        } catch (error) {
+          availabilityList.innerHTML = '<tr><td colspan="3" class="availability-empty">Não foi possível carregar os horários.</td></tr>';
+          availabilitySummary.textContent = "Disponibilidade indisponível";
+        }
       }
 
       async function loadOptions() {
@@ -101,7 +204,7 @@
           ]);
           if (!clientsResponse.ok || !servicesResponse.ok || !professionalsResponse.ok) throw new Error();
           const clients = await clientsResponse.json();
-          const services = await servicesResponse.json();
+          services = await servicesResponse.json();
           const professionals = await professionalsResponse.json();
           document.querySelector("#id_cliente").innerHTML = clients.length
             ? `<option value="">Selecione o cliente</option>${clients.map(client => `<option value="${client.id_cliente}">${client.nome}</option>`).join("")}`
@@ -112,6 +215,7 @@
           document.querySelector("#id_profissional").innerHTML = professionals.length
             ? professionals.map(professional => `<option value="${professional.id_profissional}">${professional.nome}</option>`).join("")
             : "<option value=\"\">Nenhum profissional disponível</option>";
+          loadAvailability();
         } catch (error) {
           document.querySelector("#id_cliente").innerHTML = "<option value=\"\">Inicie o servidor para carregar</option>";
           document.querySelector("#id_servico").innerHTML = "<option value=\"\">Inicie o servidor para carregar</option>";
@@ -120,14 +224,23 @@
       }
 
       loadOptions();
-      setMinimumStart();
+      setMinimumDate();
+      [dateInput, professionalInput, serviceInput].forEach(input => input.addEventListener("change", () => {
+        startInput.value = "";
+        submitButton.disabled = true;
+        message.className = "form-message";
+        message.textContent = "";
+        loadAvailability();
+      }));
 
       form.addEventListener("submit", async (event) => {
         event.preventDefault();
-        const submitButton = form.querySelector("button[type='submit']");
         submitButton.disabled = true;
         message.className = "form-message";
         try {
+          if (!startInput.value) {
+            throw new Error("Selecione um horário disponível na tabela.");
+          }
           const response = await fetch(`${apiUrl}/agendamentos`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -138,11 +251,14 @@
           message.className = "form-message success";
           message.textContent = "Horário solicitado com sucesso!";
           form.reset();
+          dateInput.value = new Date().toISOString().slice(0, 10);
+          startInput.value = "";
+          loadAvailability();
         } catch (error) {
           message.className = "form-message error";
           message.textContent = error.message.includes("Failed to fetch") ? "Inicie o servidor para fazer o agendamento." : error.message;
         } finally {
-          submitButton.disabled = false;
+          submitButton.disabled = !startInput.value;
         }
       });
 

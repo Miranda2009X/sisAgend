@@ -103,6 +103,31 @@
       .form-message { border-radius: 8px; display: none; font-size: 13px; margin-top: 14px; padding: 11px 13px; }
       .form-message.success { background: #e2f1e5; color: #27633e; display: block; }
       .form-message.error { background: #fbe2dc; color: #873d31; display: block; }
+      .availability-panel { background: #f3f1e9; border: 1px solid var(--line); border-radius: 12px; margin-top: 22px; padding: 18px; }
+      .availability-heading { align-items: end; display: flex; justify-content: space-between; margin-bottom: 14px; }
+      .availability-heading h3 { font-size: 18px; margin-top: 6px; }
+      .availability-heading > span { color: var(--ink-soft); font-size: 12px; }
+      .availability-table-wrap { background: var(--paper); border: 1px solid var(--line); border-radius: 9px; max-height: 340px; overflow: auto; }
+      .availability-table { border-collapse: collapse; font-size: 13px; min-width: 100%; text-align: left; }
+      .availability-table th { background: var(--ink); color: white; font-size: 10px; letter-spacing: .08em; padding: 11px 13px; text-transform: uppercase; }
+      .availability-table td { border-bottom: 1px solid var(--line); padding: 9px 13px; vertical-align: middle; }
+      .availability-table tr:last-child td { border-bottom: 0; }
+      .availability-table td:first-child { width: 34%; }
+      .availability-table td:first-child strong { display: inline-block; min-width: 45px; }
+      .availability-table td small { color: var(--ink-soft); font-size: 11px; }
+      .availability-table td small::before { content: " "; }
+      .slot-status { color: #4e8c68; font-size: 11px; font-weight: 700; }
+      .slot-unavailable .slot-status { color: var(--ink-soft); }
+      .slot-preview td { background: #fff1d8; }
+      .slot-preview .slot-status, .slot-selected .slot-status { color: var(--coral-dark); }
+      .slot-selected td { background: #fbd9cf; }
+      .slot-detail { display: block; max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+      .slot-button, .slot-locked { border-radius: 6px; font-size: 11px; font-weight: 700; padding: 6px 9px; }
+      .slot-button { background: transparent; border: 1px solid var(--coral); color: var(--coral-dark); cursor: pointer; }
+      .slot-button:hover, .slot-button.selected { background: var(--coral); color: white; }
+      .slot-button.slot-disabled { background: #ecebe5; border-color: #d5d5cc; color: #9a9f98; cursor: not-allowed; opacity: .8; }
+      .slot-locked { color: #9a9f98; }
+      .availability-empty { color: var(--ink-soft); padding: 24px !important; text-align: center; }
 
       .section { padding: 100px 0; }
       .section-heading { align-items: end; display: flex; justify-content: space-between; margin-bottom: 38px; }
@@ -189,6 +214,8 @@
         .feature-grid { grid-template-columns: 1fr; }
         .professionals-heading { align-items: flex-start; flex-direction: column; gap: 18px; }
         .schedule-toolbar { align-items: flex-start; flex-direction: column; gap: 16px; }
+        .availability-heading { align-items: flex-start; flex-direction: column; gap: 8px; }
+        .availability-panel { padding: 12px; }
         .schedule-controls { align-items: center; width: 100%; }
         .date-filter { flex: 1; }
         .date-filter input { min-width: 0; }
