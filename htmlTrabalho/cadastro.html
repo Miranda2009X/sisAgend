@@ -69,6 +69,14 @@
       </section>
     </main>
 
+    <dialog class="registration-success-dialog" id="registration-success-dialog" aria-labelledby="registration-success-title" aria-describedby="registration-success-description">
+      <div class="registration-success-mark" aria-hidden="true">✓</div>
+      <p class="eyebrow">Cadastro concluído</p>
+      <h2 id="registration-success-title">Cadastro realizado!</h2>
+      <p id="registration-success-description">Seus dados foram salvos. Agora você já pode agendar.</p>
+      <button class="button button-primary" id="close-registration-success" type="button">Continuar</button>
+    </dialog>
+
     <footer class="shell footer">
       <div class="footer-row">
         <small>© 2026 NatiBraids. Cuidando sempre de você.</small>
@@ -81,6 +89,8 @@
       const form = document.querySelector("#client-form");
       const message = document.querySelector("#client-message");
       const phoneInput = document.querySelector("#client-phone");
+      const successDialog = document.querySelector("#registration-success-dialog");
+      const closeSuccessDialog = document.querySelector("#close-registration-success");
       const menuButton = document.querySelector(".menu-toggle");
       const nav = document.querySelector(".nav");
 
@@ -115,9 +125,10 @@
           });
           const result = await response.json();
           if (!response.ok) throw new Error(result.error || "Não foi possível concluir o cadastro.");
-          message.className = "form-message success";
-          message.textContent = "Cadastro realizado com sucesso! Agora você já pode agendar.";
+          message.className = "form-message";
+          message.textContent = "";
           form.reset();
+          successDialog.showModal();
         } catch (error) {
           message.className = "form-message error";
           message.textContent = error.message.includes("Failed to fetch") ? "Inicie o servidor para concluir o cadastro." : error.message;
@@ -125,6 +136,8 @@
           submitButton.disabled = false;
         }
       });
+
+      closeSuccessDialog.addEventListener("click", () => successDialog.close());
 
       menuButton.addEventListener("click", () => {
         const isOpen = menuButton.getAttribute("aria-expanded") === "true";
