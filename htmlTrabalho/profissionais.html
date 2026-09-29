@@ -58,10 +58,9 @@
                 <div class="metric"><span>Confirmados</span><strong>--</strong></div>
               </div>
               <div class="schedule-summary" id="schedule-summary">Carregando escala...</div>
-              <div class="professional-grid" id="professional-list" aria-live="polite">
+              <div class="schedule-table-wrap" id="professional-list" role="region" aria-label="Reservas do dia" aria-live="polite" tabindex="0">
                 <p class="empty-state">Carregando escala...</p>
               </div>
-            </div>
           </div>
         </div>
       </section>
@@ -88,7 +87,7 @@
     </dialog>
 
     <script>
-      const apiUrl = "http://localhost:3000";
+      const apiUrl = "http://localhost:3001";
       const list = document.querySelector("#professional-list");
       const scheduleDate = document.querySelector("#schedule-date");
       const scheduleTitle = document.querySelector("#schedule-title");
@@ -113,6 +112,15 @@
         const totalAppointments = professionals.reduce((total, professional) => total + professional.agendamentos.length, 0);
         const activeProfessionals = professionals.filter(professional => professional.ativo).length;
         const confirmedAppointments = professionals.reduce((total, professional) => total + professional.agendamentos.filter(appointment => appointment.status === "Confirmado").length, 0);
+        const appointments = professionals.flatMap(professional => professional.agendamentos.map(appointment => ({
+          ...appointment,
+          profissional_nome: professional.nome,
+          profissional_telefone: professional.telefone
+        }))).sort((first, second) =>
+          new Date(first.data_hora_inicio) - new Date(second.data_hora_inicio) ||
+          first.profissional_nome.localeCompare(second.profissional_nome, "pt-BR") ||
+          first.cliente_nome.localeCompare(second.cliente_nome, "pt-BR")
+        );
         scheduleTitle.textContent = new Date(`${data}T12:00:00`).toLocaleDateString("pt-BR", { day: "2-digit", month: "long" });
         scheduleMetrics.innerHTML = `
           <div class="metric"><span>Profissionais ativas</span><strong>${activeProfessionals}<small>/${professionals.length}</small></strong></div>
@@ -120,38 +128,35 @@
           <div class="metric"><span>Confirmados</span><strong>${confirmedAppointments}</strong></div>
         `;
         scheduleSummary.textContent = totalAppointments ? "Acompanhe os horários reservados por profissional." : "A agenda está livre neste dia.";
-        list.innerHTML = professionals.length
-          ? professionals.map(professional => `
-              <article class="professional-card">
-                <div class="professional-card-header">
-                  <div class="professional-avatar" aria-hidden="true">${professional.nome.charAt(0).toUpperCase()}</div>
-                  <div><h3>${professional.nome}</h3><p>${professional.telefone}</p></div>
-                  <span class="professional-status ${professional.ativo ? "" : "inactive"}">${professional.ativo ? "Ativa" : "Inativa"}</span>
-                </div>
-                <div class="appointments">
-                  ${professional.agendamentos.length ? professional.agendamentos.map(appointment => `
-                    <div class="appointment-row">
-                      <strong>${formatTime(appointment.data_hora_inicio)} - ${formatTime(appointment.data_hora_fim)}</strong>
-                      <span>${appointment.nome_servico} · ${appointment.cliente_nome}</span>
-                      <div class="appointment-footer">
-                        <small class="appointment-status status-${appointment.status.toLowerCase()}">${appointment.status}</small>
-                        ${appointment.status === "Pendente" ? `
-                          <div class="appointment-actions">
-                            <button class="appointment-action confirm" type="button" data-id="${appointment.id_agendamento}" data-status="Confirmado">Confirmar</button>
-                            <button class="appointment-action cancel" type="button" data-id="${appointment.id_agendamento}" data-status="Cancelado">Cancelar</button>
-                          </div>
-                        ` : appointment.status === "Confirmado" ? `
-                          <div class="appointment-actions">
-                            <button class="appointment-action cancel" type="button" data-id="${appointment.id_agendamento}" data-status="Cancelado">Cancelar</button>
-                          </div>
-                        ` : ""}
-                      </div>
-                    </div>
-                  `).join("") : '<p class="no-appointments">Nenhum horário reservado.</p>'}
-                </div>
-              </article>
-            `).join("")
-          : '<p class="empty-state">Nenhuma profissional cadastrada ainda.</p>';
+        list.innerHTML = appointments.length ? `
+          <table class="schedule-table">
+            <thead>
+              <tr>
+                <th scope="col">Horário</th>
+                <th scope="col">Profissional</th>
+                <th scope="col">Cliente</th>
+                <th scope="col">Serviço</th>
+                <th scope="col">Status</th>
+                <th scope="col">Ações</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${appointments.map(appointment => `
+                <tr>
+                  <td class="schedule-time">${formatTime(appointment.data_hora_inicio)}–${formatTime(appointment.data_hora_fim)}</td>
+                  <td class="schedule-professional"><strong>${appointment.profissional_nome}</strong><small>${appointment.profissional_telefone || ""}</small></td>
+                  <td>${appointment.cliente_nome}</td>
+                  <td>${appointment.nome_servico}</td>
+                  <td><span class="appointment-status status-${appointment.status.toLowerCase()}">${appointment.status}</span></td>
+                  <td class="schedule-actions"><div class="appointment-actions">
+                    ${appointment.status === "Pendente" ? `<button class="appointment-action confirm" type="button" data-id="${appointment.id_agendamento}" data-status="Confirmado">Confirmar</button>` : ""}
+                    ${["Pendente", "Confirmado"].includes(appointment.status) ? `<button class="appointment-action cancel" type="button" data-id="${appointment.id_agendamento}" data-status="Cancelado">Cancelar</button>` : ""}
+                  </div></td>
+                </tr>
+              `).join("")}
+            </tbody>
+          </table>
+        ` : `<p class="empty-state table-empty">${professionals.length ? "Nenhuma reserva para esta data." : "Nenhuma profissional cadastrada ainda."}</p>`;
         list.querySelectorAll(".appointment-action").forEach(button => {
           button.addEventListener("click", () => button.dataset.status === "Cancelado" ? openCancellation(button) : updateAppointmentStatus(button));
         });

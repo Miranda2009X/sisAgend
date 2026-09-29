@@ -123,6 +123,7 @@
       .availability-table td small::before { content: " "; }
       .slot-status { color: #4e8c68; font-size: 11px; font-weight: 700; }
       .slot-unavailable .slot-status { color: var(--ink-soft); }
+      .slot-cancelled-history .slot-status { color: #9a5b16; }
       .slot-preview td { background: #fff1d8; }
       .slot-preview .slot-status, .slot-selected .slot-status { color: var(--coral-dark); }
       .slot-selected td { background: #fbd9cf; }
@@ -173,31 +174,31 @@
       .metric strong { display: block; font-family: "Playfair Display", serif; font-size: 28px; line-height: 1; margin-top: 8px; }
       .metric small { color: var(--ink-soft); font-family: "DM Sans", sans-serif; font-size: 13px; margin-left: 3px; }
       .schedule-summary { color: var(--ink-soft); font-size: 13px; margin-bottom: 18px; }
-      .professional-grid { display: grid; gap: 16px; grid-template-columns: repeat(2, 1fr); }
-      .professional-card { background: var(--paper); border: 1px solid rgba(18, 61, 66, .08); border-radius: 14px; padding: 22px; }
-      .professional-card-header { align-items: flex-start; display: flex; gap: 12px; }
-      .professional-avatar { align-items: center; background: var(--mint); border-radius: 50% 50% 50% 8px; color: var(--ink); display: flex; font-family: "Playfair Display", serif; font-size: 25px; height: 48px; justify-content: center; margin-bottom: 18px; width: 48px; }
-      .professional-card h3 { font-size: 20px; }
-      .professional-card p { color: var(--ink-soft); font-size: 14px; margin: 8px 0 0; }
-      .professional-status { color: #4e8c68; font-size: 11px; font-weight: 700; margin-left: auto; text-transform: uppercase; }
-      .professional-status.inactive { color: var(--coral-dark); }
-      .appointments { border-top: 1px solid var(--line); margin-top: 18px; padding-top: 12px; }
-      .appointment-row { border-left: 3px solid var(--coral); display: grid; gap: 2px; margin-top: 10px; padding: 3px 0 3px 10px; }
-      .appointment-row strong { font-size: 13px; }
-      .appointment-row span { color: var(--ink-soft); font-size: 12px; }
-      .appointment-status { font-size: 10px; font-weight: 700; text-transform: uppercase; }
-      .appointment-footer { align-items: center; display: flex; gap: 10px; justify-content: space-between; margin-top: 4px; }
+      .schedule-table-wrap { background: var(--paper); border: 1px solid var(--line); border-radius: 9px; overflow-x: auto; }
+      .schedule-table { border-collapse: collapse; font-size: 13px; min-width: 880px; text-align: left; width: 100%; }
+      .schedule-table th { background: var(--ink); color: white; font-size: 11px; font-weight: 700; padding: 12px 14px; white-space: nowrap; }
+      .schedule-table td { border-bottom: 1px solid var(--line); padding: 12px 14px; vertical-align: middle; }
+      .schedule-table tbody tr:nth-child(even) td { background: #f8f5ed; }
+      .schedule-table tbody tr:hover td { background: #edf3ee; }
+      .schedule-table tbody tr:last-child td { border-bottom: 0; }
+      .schedule-time { font-variant-numeric: tabular-nums; font-weight: 700; white-space: nowrap; }
+      .schedule-professional strong, .schedule-professional small { display: block; }
+      .schedule-professional small { color: var(--ink-soft); font-size: 11px; margin-top: 2px; }
+      .schedule-actions { white-space: nowrap; }
+      .table-empty { background: var(--paper); border: 1px solid var(--line); border-radius: 9px; padding: 24px; }
+      .appointment-status { border-radius: 6px; display: inline-block; font-size: 10px; font-weight: 700; padding: 4px 7px; text-transform: uppercase; white-space: nowrap; }
+      .status-pendente { background: #fff1d8; color: #9a5b16; }
+      .status-cancelado { background: #fbe2dc; color: var(--coral-dark); }
+      .status-confirmado { background: #e2f1e5; color: #27633e; }
+      .status-concluido { background: var(--mint); color: var(--ink); }
       .appointment-actions { display: flex; gap: 6px; }
-      .appointment-action { background: transparent; border: 1px solid var(--line); border-radius: 6px; cursor: pointer; font-size: 10px; font-weight: 700; padding: 5px 8px; }
-      .appointment-action:hover { transform: translateY(-1px); }
+      .appointment-action { background: transparent; border: 1px solid var(--line); border-radius: 6px; cursor: pointer; font-size: 11px; font-weight: 700; min-height: 32px; padding: 5px 9px; }
+      .appointment-action:hover { background: var(--cream); }
       .appointment-action.confirm { border-color: #8fc19e; color: #27633e; }
       .appointment-action.confirm:hover { background: #e2f1e5; }
       .appointment-action.cancel { border-color: #e2a194; color: var(--coral-dark); }
       .appointment-action.cancel:hover { background: #fbe2dc; }
       .appointment-action:disabled { cursor: wait; opacity: .55; }
-      .status-cancelado { color: var(--coral-dark); }
-      .status-confirmado, .status-concluido { color: #4e8c68; }
-      .no-appointments { color: var(--ink-soft); font-size: 13px; margin: 0; }
       .cancellation-dialog { background: var(--paper); border: 1px solid var(--line); border-radius: 14px; box-shadow: var(--shadow); color: var(--ink); max-width: 440px; padding: 24px; width: calc(100% - 36px); }
       .cancellation-dialog::backdrop { background: rgba(18, 61, 66, .42); }
       .cancellation-dialog h2 { font-size: 28px; }
@@ -205,6 +206,19 @@
       .cancellation-dialog textarea { border: 1px solid var(--line); border-radius: 8px; color: var(--ink); display: block; font: inherit; margin-top: 7px; padding: 10px; resize: vertical; width: 100%; }
       .cancellation-dialog textarea:focus { border-color: var(--coral); box-shadow: 0 0 0 3px rgba(230, 110, 88, .14); outline: none; }
       .dialog-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 18px; }
+      .booking-warning-dialog { background: var(--paper); border: 2px solid #d58b27; border-radius: 14px; box-shadow: 0 28px 80px rgba(18, 61, 66, .3); color: var(--ink); max-width: 520px; padding: 30px; width: calc(100% - 32px); }
+      .booking-warning-dialog::backdrop { background: rgba(18, 35, 37, .72); backdrop-filter: blur(3px); }
+      .booking-warning-mark { align-items: center; background: #fff1d8; border: 2px solid #d58b27; border-radius: 50%; color: #9a5b16; display: flex; font-size: 28px; font-weight: 700; height: 54px; justify-content: center; margin-bottom: 16px; width: 54px; }
+      .booking-warning-dialog h2 { font-size: 26px; line-height: 1.2; margin: 6px 0 10px; }
+      .booking-warning-dialog > p:not(.eyebrow) { color: var(--ink-soft); font-size: 15px; margin: 0; }
+      .booking-warning-dialog .dialog-actions { flex-wrap: wrap; }
+      .booking-warning-dialog .button { min-height: 44px; }
+      @media (max-width: 520px) {
+        .booking-warning-dialog { padding: 22px; }
+        .booking-warning-dialog h2 { font-size: 22px; }
+        .booking-warning-dialog .dialog-actions { flex-direction: column-reverse; }
+        .booking-warning-dialog .button { width: 100%; }
+      }
       .empty-state { color: var(--ink-soft); grid-column: 1 / -1; margin: 0; }
       .footer { padding: 34px 0; }
       .footer-row { align-items: center; border-top: 1px solid var(--line); display: flex; justify-content: space-between; padding-top: 24px; }

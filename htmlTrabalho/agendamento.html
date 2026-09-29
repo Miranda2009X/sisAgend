@@ -60,9 +60,8 @@
                 </select>
               </div>
               <div class="field full">
-                <label for="data_agendamento_display">Data (dd/mm/aaaa)</label>
-                <input id="data_agendamento_display" type="text" inputmode="numeric" placeholder="28/09/2026" maxlength="10" required>
-                <input id="data_agendamento" type="hidden">
+                <label for="data_agendamento">Data</label>
+                <input id="data_agendamento" type="date" required>
               </div>
             </div>
             <input id="data_hora_inicio" name="data_hora_inicio" type="hidden" required>
@@ -85,6 +84,17 @@
       </section>
     </main>
 
+    <dialog class="booking-warning-dialog" id="booking-warning-dialog" aria-labelledby="booking-warning-title" aria-describedby="booking-warning-description">
+      <div class="booking-warning-mark" aria-hidden="true">!</div>
+      <p class="eyebrow">Atenção ao horário</p>
+      <h2 id="booking-warning-title">Este horário já teve cancelamento</h2>
+      <p id="booking-warning-description">Um agendamento anterior neste intervalo foi cancelado. O horário está livre, mas essa ocorrência pode indicar uma alteração ou desistência. Deseja continuar?</p>
+      <div class="dialog-actions">
+        <button class="button button-quiet" id="choose-another-time" type="button">Escolher outro horário</button>
+        <button class="button button-primary" id="continue-cancelled-time" type="button">Continuar com a reserva</button>
+      </div>
+    </dialog>
+
     <footer class="shell footer">
       <div class="footer-row">
         <small>© 2026 NatiBraids. Cuidando sempre de você.</small>
@@ -93,11 +103,10 @@
     </footer>
 
     <script>
-      const apiUrl = "http://localhost:3000";
+      const apiUrl = "http://localhost:3001";
       const form = document.querySelector("#appointment-form");
       const message = document.querySelector("#appointment-message");
       const dateInput = document.querySelector("#data_agendamento");
-      const dateDisplayInput = document.querySelector("#data_agendamento_display");
       const clientNameInput = document.querySelector("#cliente_nome");
       const clientIdInput = document.querySelector("#id_cliente");
       const clientsList = document.querySelector("#clientes-lista");
@@ -107,32 +116,29 @@
       const availabilityList = document.querySelector("#availability-list");
       const availabilitySummary = document.querySelector("#availability-summary");
       const submitButton = document.querySelector("#appointment-submit");
+      const bookingWarningDialog = document.querySelector("#booking-warning-dialog");
+      const chooseAnotherTimeButton = document.querySelector("#choose-another-time");
+      const continueCancelledTimeButton = document.querySelector("#continue-cancelled-time");
       const menuButton = document.querySelector(".menu-toggle");
       const nav = document.querySelector(".nav");
       let services = [];
       let clients = [];
       let dailyAppointments = [];
+      let cancellationWarningAccepted = false;
 
       function setMinimumDate() {
         const now = new Date();
         const pad = value => String(value).padStart(2, "0");
         dateInput.min = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
         dateInput.value = dateInput.min;
-        dateDisplayInput.value = `${pad(now.getDate())}/${pad(now.getMonth() + 1)}/${now.getFullYear()}`;
-      }
-
-      function parseBrazilianDate(value) {
-        const match = value.trim().match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
-        if (!match) return "";
-        const [, day, month, year] = match;
-        const date = new Date(Number(year), Number(month) - 1, Number(day));
-        if (date.getFullYear() !== Number(year) || date.getMonth() !== Number(month) - 1 || date.getDate() !== Number(day)) return "";
-        return `${year}-${month}-${day}`;
       }
 
       function updateDate() {
-        const parsedDate = parseBrazilianDate(dateDisplayInput.value);
-        dateInput.value = parsedDate >= dateInput.min ? parsedDate : "";
+        cancellationWarningAccepted = false;
+        startInput.value = "";
+        submitButton.disabled = true;
+        message.className = "form-message";
+        message.textContent = "";
         loadAvailability();
       }
 
@@ -166,6 +172,14 @@
         return `${formatTime(start)}-${formatTime(end)} (${formatDuration(duration)})`;
       }
 
+      function hasCancellationHistory(start, end) {
+        return dailyAppointments.some(appointment =>
+          appointment.status === "Cancelado" &&
+          new Date(appointment.data_hora_inicio) < new Date(end) &&
+          new Date(appointment.data_hora_fim) > new Date(start)
+        );
+      }
+
       function renderAvailability() {
         const selectedService = services.find(service => String(service.id_servico) === serviceInput.value);
         const selectedProfessional = professionalInput.value;
@@ -190,14 +204,16 @@
           const end = `${selectedDate}T${String(Math.floor(endMinutes / 60)).padStart(2, "0")}:${String(endMinutes % 60).padStart(2, "0")}`;
           const occupiedBy = dailyAppointments.find(appointment => appointment.status !== "Cancelado" && new Date(appointment.data_hora_inicio) < new Date(end) && new Date(appointment.data_hora_fim) > new Date(start));
           const occupied = Boolean(occupiedBy);
+          const hasCancelledHistory = hasCancellationHistory(start, end);
           const inPast = new Date(start) < new Date();
           const selected = selectedStart === start;
           const previewBlocked = selectedStartMinutes !== null && minutes > selectedStartMinutes && minutes < selectedEndMinutes;
           const occupiedDetail = occupiedBy ? `${occupiedBy.nome_servico} · ${formatTimeRange(occupiedBy.data_hora_inicio, occupiedBy.data_hora_fim)} · ${occupiedBy.cliente_nome}` : "";
-          const rowClass = occupied || inPast ? "slot-unavailable" : previewBlocked ? "slot-preview" : selected ? "slot-selected" : "";
+          const rowClass = [occupied || inPast ? "slot-unavailable" : "", previewBlocked ? "slot-preview" : "", selected ? "slot-selected" : "", hasCancelledHistory && !occupied && !inPast ? "slot-cancelled-history" : ""].filter(Boolean).join(" ");
           const slotStatus = inPast ? "Encerrado" : occupied ? "Ocupado" : selected ? "Início escolhido" : previewBlocked ? "Neste atendimento" : "Disponível";
+          const slotDetail = occupied ? occupiedDetail : hasCancelledHistory && !previewBlocked ? "Este horário já teve um agendamento cancelado." : previewBlocked ? `${selectedService.nome_servico} · ${formatDuration(duration)}` : "";
           const slotAction = occupied || inPast || previewBlocked ? '<button class="slot-button slot-disabled" type="button" disabled>Bloqueado</button>' : selected ? '<span class="slot-locked">Selecionado</span>' : `<button class="slot-button" type="button" data-start="${start}">Selecionar</button>`;
-          slots.push(`<tr class="${rowClass}"><td><strong>${hour}:${minute}</strong><small>até ${end.slice(-5)}</small></td><td><span class="slot-status">${slotStatus}</span>${occupied ? `<small class="slot-detail">${occupiedDetail}</small>` : previewBlocked ? `<small class="slot-detail">${selectedService.nome_servico} · ${formatDuration(duration)}</small>` : ""}</td><td>${slotAction}</td></tr>`);
+          slots.push(`<tr class="${rowClass}"><td><strong>${hour}:${minute}</strong><small>até ${end.slice(-5)}</small></td><td><span class="slot-status">${slotStatus}</span>${slotDetail ? `<small class="slot-detail">${slotDetail}</small>` : ""}</td><td>${slotAction}</td></tr>`);
         }
         availabilityList.innerHTML = slots.join("");
         submitButton.disabled = !selectedStart;
@@ -205,6 +221,7 @@
           ? `${selectedService.nome_servico} ocupa ${formatDuration(duration)} a partir de ${selectedStart.slice(11)}`
           : `${dailyAppointments.filter(appointment => appointment.status !== "Cancelado").length} reserva(s) no dia`;
         availabilityList.querySelectorAll(".slot-button").forEach(button => button.addEventListener("click", () => {
+          cancellationWarningAccepted = false;
           startInput.value = button.dataset.start;
           renderAvailability();
           message.className = "form-message";
@@ -259,14 +276,14 @@
       loadOptions();
       setMinimumDate();
       [professionalInput, serviceInput].forEach(input => input.addEventListener("change", () => {
+        cancellationWarningAccepted = false;
         startInput.value = "";
         submitButton.disabled = true;
         message.className = "form-message";
         message.textContent = "";
         loadAvailability();
       }));
-      dateDisplayInput.addEventListener("change", updateDate);
-      dateDisplayInput.addEventListener("blur", updateDate);
+      dateInput.addEventListener("change", updateDate);
       clientNameInput.addEventListener("input", updateClientId);
       clientNameInput.addEventListener("change", updateClientId);
 
@@ -285,6 +302,14 @@
           if (!startInput.value) {
             throw new Error("Selecione um horário disponível na tabela.");
           }
+          const selectedService = services.find(service => String(service.id_servico) === serviceInput.value);
+          const selectedStart = new Date(startInput.value);
+          const selectedEnd = new Date(selectedStart.getTime() + Number(selectedService.duracao_minutos) * 60000);
+          if (hasCancellationHistory(selectedStart, selectedEnd) && !cancellationWarningAccepted) {
+            bookingWarningDialog.showModal();
+            return;
+          }
+          cancellationWarningAccepted = false;
           const response = await fetch(`${apiUrl}/agendamentos`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -306,6 +331,19 @@
         } finally {
           submitButton.disabled = !startInput.value;
         }
+      });
+
+      chooseAnotherTimeButton.addEventListener("click", () => {
+        bookingWarningDialog.close();
+        startInput.value = "";
+        submitButton.disabled = true;
+        renderAvailability();
+      });
+
+      continueCancelledTimeButton.addEventListener("click", () => {
+        cancellationWarningAccepted = true;
+        bookingWarningDialog.close();
+        form.requestSubmit();
       });
 
       menuButton.addEventListener("click", () => {
