@@ -106,6 +106,12 @@
         nav.style.borderRadius = "12px";
         nav.style.boxShadow = "0 12px 30px rgba(18, 61, 66, .14)";
       });
+
+      nav.addEventListener("click", event => {
+        if (!event.target.closest("a") || !window.matchMedia("(max-width: 780px)").matches) return;
+        menuButton.setAttribute("aria-expanded", "false");
+        nav.removeAttribute("style");
+      });
     </script>
   </body>
 </html>
