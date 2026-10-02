@@ -95,6 +95,16 @@
       </div>
     </dialog>
 
+    <dialog class="booking-warning-dialog" id="after-hours-dialog" aria-labelledby="after-hours-title" aria-describedby="after-hours-description">
+      <div class="booking-warning-mark" aria-hidden="true">!</div>
+      <p class="eyebrow">Atenção ao horário</p>
+      <h2 id="after-hours-title">Procedimento após as 17h</h2>
+      <p id="after-hours-description">Procedimentos além do horário terão custo adicional.</p>
+      <div class="dialog-actions">
+        <button class="button button-primary" id="close-after-hours-dialog" type="button">Entendi</button>
+      </div>
+    </dialog>
+
     <footer class="shell footer">
       <div class="footer-row">
         <small>© 2026 NatiBraids. Cuidando sempre de você.</small>
@@ -119,6 +129,7 @@
       const bookingWarningDialog = document.querySelector("#booking-warning-dialog");
       const chooseAnotherTimeButton = document.querySelector("#choose-another-time");
       const continueCancelledTimeButton = document.querySelector("#continue-cancelled-time");
+      const afterHoursDialog = document.querySelector("#after-hours-dialog");
       const menuButton = document.querySelector(".menu-toggle");
       const nav = document.querySelector(".nav");
       let services = [];
@@ -226,6 +237,11 @@
           renderAvailability();
           message.className = "form-message";
           message.textContent = `Horário selecionado: ${button.dataset.start.slice(11)}`;
+          const selectedService = services.find(service => String(service.id_servico) === serviceInput.value);
+          const startMinutes = minutesFromTime(button.dataset.start.slice(11, 16));
+          if (startMinutes + Number(selectedService.duracao_minutos) > 17 * 60) {
+            afterHoursDialog.showModal();
+          }
         }));
       }
 
@@ -344,6 +360,10 @@
         cancellationWarningAccepted = true;
         bookingWarningDialog.close();
         form.requestSubmit();
+      });
+
+      document.querySelector("#close-after-hours-dialog").addEventListener("click", () => {
+        afterHoursDialog.close();
       });
 
       menuButton.addEventListener("click", () => {
