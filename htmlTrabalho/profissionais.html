@@ -18,9 +18,9 @@
       </a>
       <nav class="nav" aria-label="Navegação principal">
         <a href="cliente.html#recursos">Serviços</a>
-        <a href="profissionais.html" aria-current="page">Profissionais</a>
         <a href="agendamento.html">Agendamento</a>
         <a class="button button-quiet" href="agendamento.html">Agendar agora</a>
+        <button class="button button-quiet" id="admin-logout" type="button">Sair</button>
       </nav>
       <button class="menu-toggle" type="button" aria-label="Abrir menu" aria-expanded="false">☰</button>
     </header>
@@ -87,7 +87,7 @@
     </dialog>
 
     <script>
-      const apiUrl = "http://localhost:3001";
+      const apiUrl = window.location.origin;
       const list = document.querySelector("#professional-list");
       const scheduleDate = document.querySelector("#schedule-date");
       const scheduleTitle = document.querySelector("#schedule-title");
@@ -102,7 +102,13 @@
       const cancellationForm = document.querySelector("#cancellation-form");
       const cancellationReason = document.querySelector("#cancellation-reason");
       const closeCancellation = document.querySelector("#close-cancellation");
+      const logoutButton = document.querySelector("#admin-logout");
       let appointmentToCancel = null;
+
+      logoutButton.addEventListener("click", async () => {
+        await fetch("/admin/logout", { method: "POST" });
+        window.location.href = "/admin.html";
+      });
 
       function formatTime(value) {
         return new Date(value).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });

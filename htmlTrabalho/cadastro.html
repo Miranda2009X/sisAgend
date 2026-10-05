@@ -18,7 +18,6 @@
       </a>
       <nav class="nav" aria-label="Navegação principal">
         <a href="cliente.html#recursos">Serviços</a>
-        <a href="profissionais.html">Profissionais</a>
         <a href="agendamento.html">Agendamento</a>
         <a href="cadastro.html" aria-current="page">Cadastrar</a>
       </nav>
@@ -85,7 +84,7 @@
     </footer>
 
     <script>
-      const apiUrl = "http://localhost:3001";
+      const apiUrl = window.location.origin;
       const form = document.querySelector("#client-form");
       const message = document.querySelector("#client-message");
       const phoneInput = document.querySelector("#client-phone");

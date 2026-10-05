@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#123d42">
+    <title>Acesso administrativo | NatiBraids</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css.css">
+  </head>
+  <body>
+    <header class="shell topbar">
+      <a class="brand" href="cliente.html" aria-label="NatiBraids início">
+        <span class="brand-mark">N</span><span>NatiBraids</span>
+      </a>
+      <nav class="nav" aria-label="Navegação principal">
+        <a href="cliente.html">Voltar ao início</a>
+      </nav>
+    </header>
+
+    <main>
+      <section class="section appointment-page">
+        <div class="shell appointment-layout">
+          <div class="appointment-intro">
+            <span class="eyebrow">Acesso restrito</span>
+            <h1>Área administrativa.</h1>
+            <p>Entre com as credenciais administrativas para continuar.</p>
+          </div>
+          <form class="schedule-card" id="admin-login-form">
+            <div class="card-top"><h2>Entrar</h2><span class="status-dot" aria-label="Sistema online"></span></div>
+            <div class="form-grid">
+              <div class="field full">
+                <label for="admin-email">E-mail</label>
+                <input id="admin-email" name="email" type="email" autocomplete="username" required>
+              </div>
+              <div class="field full">
+                <label for="admin-password">Senha</label>
+                <input id="admin-password" name="senha" type="password" autocomplete="current-password" required>
+              </div>
+            </div>
+            <button class="button button-primary form-button" type="submit">Entrar</button>
+            <div class="form-message" id="admin-login-message" role="status" aria-live="polite"></div>
+          </form>
+        </div>
+      </section>
+    </main>
+
+    <script>
+      const form = document.querySelector("#admin-login-form");
+      const message = document.querySelector("#admin-login-message");
+
+      form.addEventListener("submit", async event => {
+        event.preventDefault();
+        const button = form.querySelector("button[type='submit']");
+        button.disabled = true;
+        message.className = "form-message";
+        try {
+          const response = await fetch("/admin/login", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(Object.fromEntries(new FormData(form)))
+          });
+          const result = await response.json();
+          if (!response.ok) throw new Error(result.error || "Não foi possível entrar.");
+          window.location.href = "/profissionais.html";
+        } catch (error) {
+          message.className = "form-message error";
+          message.textContent = error.message.includes("Failed to fetch") ? "Não foi possível conectar ao servidor." : error.message;
+          button.disabled = false;
+        }
+      });
+    </script>
+  </body>
+</html>

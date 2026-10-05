@@ -18,7 +18,6 @@
       </a>
       <nav class="nav" aria-label="Navegação principal">
         <a href="cliente.html#recursos">Serviços</a>
-        <a href="profissionais.html">Profissionais</a>
         <a href="agendamento.html" aria-current="page">Agendamento</a>
         <a class="button button-quiet" href="cliente.html">Voltar ao início</a>
       </nav>
@@ -113,7 +112,7 @@
     </footer>
 
     <script>
-      const apiUrl = "http://localhost:3001";
+      const apiUrl = window.location.origin;
       const form = document.querySelector("#appointment-form");
       const message = document.querySelector("#appointment-message");
       const dateInput = document.querySelector("#data_agendamento");
@@ -219,7 +218,7 @@
           const inPast = new Date(start) < new Date();
           const selected = selectedStart === start;
           const previewBlocked = selectedStartMinutes !== null && minutes > selectedStartMinutes && minutes < selectedEndMinutes;
-          const occupiedDetail = occupiedBy ? `${occupiedBy.nome_servico} · ${formatTimeRange(occupiedBy.data_hora_inicio, occupiedBy.data_hora_fim)} · ${occupiedBy.cliente_nome}` : "";
+          const occupiedDetail = occupiedBy ? `Ocupado até ${formatTime(occupiedBy.data_hora_fim)}` : "";
           const rowClass = [occupied || inPast ? "slot-unavailable" : "", previewBlocked ? "slot-preview" : "", selected ? "slot-selected" : "", hasCancelledHistory && !occupied && !inPast ? "slot-cancelled-history" : ""].filter(Boolean).join(" ");
           const slotStatus = inPast ? "Encerrado" : occupied ? "Ocupado" : selected ? "Início escolhido" : previewBlocked ? "Neste atendimento" : "Disponível";
           const slotDetail = occupied ? occupiedDetail : hasCancelledHistory && !previewBlocked ? "Este horário já teve um agendamento cancelado." : previewBlocked ? `${selectedService.nome_servico} · ${formatDuration(duration)}` : "";
