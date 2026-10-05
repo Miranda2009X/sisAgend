@@ -1,4 +1,47 @@
 const db = require('../database/connection');
+const erroInterno = require('../utils/erro');
+
+const STATUS_VALIDOS = ['Pendente', 'Confirmado', 'Concluido', 'Cancelado'];
+
+const pad = value => String(value).padStart(2, '0');
+const formatDateTime = date =>
+  `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+
+// Regras de negócio compartilhadas por "agendar" e "reagendar".
+// Retorna { erro } quando algo é inválido, ou { data_hora_fim } quando está tudo certo.
+async function validarHorario({ id_profissional, id_servico, data_hora_inicio, ignorarAgendamento }) {
+  const servico = await db('SERVICO')
+    .select('duracao_minutos')
+    .where('id_servico', id_servico)
+    .first();
+
+  if (!servico) return { erro: 'Serviço não encontrado.' };
+
+  const inicio = new Date(data_hora_inicio);
+  if (Number.isNaN(inicio.getTime())) return { erro: 'Data e horário inválidos.' };
+  if (inicio < new Date()) return { erro: 'Escolha uma data e horário a partir de agora.' };
+  if (inicio.getMinutes() !== 0) return { erro: 'Escolha um horário com hora inteira, como 09:00 ou 14:00.' };
+
+  const duracao = Number(servico.duracao_minutos);
+  if (!Number.isFinite(duracao) || duracao <= 0) return { erro: 'Este serviço não possui uma duração válida.' };
+
+  const data_hora_fim = formatDateTime(new Date(inicio.getTime() + duracao * 60000));
+
+  const consulta = db('AGENDAMENTO')
+    .where('id_profissional', id_profissional)
+    .andWhere('status', '!=', 'Cancelado')
+    .andWhere('data_hora_inicio', '<', data_hora_fim)
+    .andWhere('data_hora_fim', '>', data_hora_inicio);
+
+  // No reagendamento, o próprio agendamento não conta como conflito.
+  if (ignorarAgendamento) consulta.andWhere('id_agendamento', '!=', ignorarAgendamento);
+
+  if (await consulta.first()) {
+    return { erro: 'Este profissional já possui um agendamento neste horário.' };
+  }
+
+  return { data_hora_fim };
+}
 
 module.exports = {
   async agendar(req, res) {
@@ -16,61 +59,23 @@ module.exports = {
         return res.status(400).json({ error: `Preencha: ${missingFields.join(', ')}.` });
       }
 
-      const servico = await db('SERVICO')
-        .select('duracao_minutos')
-        .where('id_servico', id_servico)
-        .first();
-
-      if (!servico) {
-        return res.status(400).json({ error: "Serviço não encontrado." });
-      }
-
-      const inicio = new Date(data_hora_inicio);
-      if (Number.isNaN(inicio.getTime())) {
-        return res.status(400).json({ error: "Data e horário inválidos." });
-      }
-      if (inicio < new Date()) {
-        return res.status(400).json({ error: "Escolha uma data e horário a partir de agora." });
-      }
-      if (inicio.getMinutes() !== 0) {
-        return res.status(400).json({ error: "Escolha um horário com hora inteira, como 09:00 ou 14:00." });
-      }
-      if (!Number.isFinite(Number(servico.duracao_minutos)) || Number(servico.duracao_minutos) <= 0) {
-        return res.status(400).json({ error: "Este serviço não possui uma duração válida." });
-      }
-
-      const fim = new Date(inicio.getTime() + Number(servico.duracao_minutos) * 60000);
-      const formatDateTime = date => {
-        const pad = value => String(value).padStart(2, '0');
-        return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
-      };
-      const data_hora_fim = formatDateTime(fim);
-
-      const conflito = await db('AGENDAMENTO')
-        .where('id_profissional', id_profissional)
-        .andWhere('status', '!=', 'Cancelado')
-        .andWhere('data_hora_inicio', '<', data_hora_fim)
-        .andWhere('data_hora_fim', '>', data_hora_inicio)
-        .first();
-
-      if (conflito) {
-        return res.status(400).json({ error: "Este profissional já possui um agendamento neste horário." });
-      }
+      const { erro, data_hora_fim } = await validarHorario({ id_profissional, id_servico, data_hora_inicio });
+      if (erro) return res.status(400).json({ error: erro });
 
       await db('AGENDAMENTO').insert({
         id_cliente, id_profissional, id_servico, data_hora_inicio, data_hora_fim, status: 'Pendente'
       });
 
-      return res.status(201).json({ message: "Agendamento realizado com sucesso! 📅" });
+      return res.status(201).json({ message: 'Agendamento realizado com sucesso! 📅' });
     } catch (error) {
-      return res.status(500).json({ error: error.message });
+      return erroInterno(res, error);
     }
   },
 
   async listar(req, res) {
     try {
       const { data } = req.query;
-      let query = db('AGENDAMENTO')
+      const query = db('AGENDAMENTO')
         .join('CLIENTE', 'AGENDAMENTO.id_cliente', '=', 'CLIENTE.id_cliente')
         .join('PROFISSIONAL', 'AGENDAMENTO.id_profissional', '=', 'PROFISSIONAL.id_professional')
         .join('SERVICO', 'AGENDAMENTO.id_servico', '=', 'SERVICO.id_servico')
@@ -85,10 +90,9 @@ module.exports = {
         query.whereLike('data_hora_inicio', `${data}%`);
       }
 
-      const agendamentos = await query;
-      return res.json(agendamentos);
+      return res.json(await query);
     } catch (error) {
-      return res.status(500).json({ error: error.message });
+      return erroInterno(res, error);
     }
   },
 
@@ -97,32 +101,53 @@ module.exports = {
       const { id } = req.params;
       const { status, justificativa_cancelamento } = req.body;
 
-      if (!['Pendente', 'Confirmado', 'Concluido', 'Cancelado'].includes(status)) {
-        return res.status(400).json({ error: "Status inválido." });
+      if (!STATUS_VALIDOS.includes(status)) {
+        return res.status(400).json({ error: 'Status inválido.' });
       }
       if (status === 'Cancelado' && !justificativa_cancelamento?.trim()) {
-        return res.status(400).json({ error: "A justificativa é obrigatória para cancelar a reserva." });
+        return res.status(400).json({ error: 'A justificativa é obrigatória para cancelar a reserva.' });
       }
 
-      await db('AGENDAMENTO').where('id_agendamento', id).update({
+      const atualizados = await db('AGENDAMENTO').where('id_agendamento', id).update({
         status,
         justificativa_cancelamento: status === 'Cancelado' ? justificativa_cancelamento.trim() : null
       });
+
+      if (!atualizados) return res.status(404).json({ error: 'Agendamento não encontrado.' });
       return res.json({ message: `Status do agendamento atualizado para ${status}.` });
     } catch (error) {
-      return res.status(500).json({ error: error.message });
+      return erroInterno(res, error);
     }
   },
 
   async reagendar(req, res) {
     try {
       const { id } = req.params;
-      const { data_hora_inicio, data_hora_fim } = req.body;
+      const { data_hora_inicio } = req.body;
+
+      if (!data_hora_inicio) {
+        return res.status(400).json({ error: 'Informe a nova data e horário.' });
+      }
+
+      const agendamento = await db('AGENDAMENTO').where('id_agendamento', id).first();
+      if (!agendamento) return res.status(404).json({ error: 'Agendamento não encontrado.' });
+      if (agendamento.status === 'Cancelado' || agendamento.status === 'Concluido') {
+        return res.status(400).json({ error: `Não é possível remarcar um agendamento ${agendamento.status.toLowerCase()}.` });
+      }
+
+      // O horário de término é recalculado pelo servidor, a partir da duração do serviço.
+      const { erro, data_hora_fim } = await validarHorario({
+        id_profissional: agendamento.id_profissional,
+        id_servico: agendamento.id_servico,
+        data_hora_inicio,
+        ignorarAgendamento: id
+      });
+      if (erro) return res.status(400).json({ error: erro });
 
       await db('AGENDAMENTO').where('id_agendamento', id).update({ data_hora_inicio, data_hora_fim });
-      return res.json({ message: "Agendamento remarcado com sucesso." });
+      return res.json({ message: 'Agendamento remarcado com sucesso.' });
     } catch (error) {
-      return res.status(500).json({ error: error.message });
+      return erroInterno(res, error);
     }
   }
 };

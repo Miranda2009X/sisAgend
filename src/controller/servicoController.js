@@ -1,4 +1,5 @@
 const db = require('../database/connection');
+const erroInterno = require('../utils/erro');
 
 module.exports = {
   async listar(req, res) {
@@ -9,7 +10,7 @@ module.exports = {
         .where('SERVICO.ativo', true);
       return res.json(servicos);
     } catch (error) {
-      return res.status(500).json({ error: error.message });
+      return erroInterno(res, error);
     }
   }
 };

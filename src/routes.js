@@ -6,6 +6,8 @@ const db = require('./database/connection');
 const ClienteController = require('./controller/clienteController');
 const ServicoController = require('./controller/servicoController');
 const AgendamentoController = require('./controller/agendamentoController');
+const AuthController = require('./controller/authController');
+const erroInterno = require('./utils/erro');
 
 routes.post('/clientes', async (req, res) => {
   try {
@@ -21,7 +23,7 @@ routes.post('/clientes', async (req, res) => {
     await db('CLIENTE').insert({ nome: nome.trim(), telefone: telefone.trim(), email: emailNormalizado, senha_hash });
     return res.status(201).json({ message: "Cliente cadastrado com sucesso! 🎉" });
   } catch (error) {
-    return res.status(500).json({ error: error.message });
+    return erroInterno(res, error);
   }
 });
 
@@ -32,7 +34,7 @@ routes.post('/profissionais', async (req, res) => {
     await db('PROFISSIONAL').insert({ nome, telefone, ativo: true });
     return res.status(201).json({ message: "Profissional cadastrado com sucesso! 💇‍♀️" });
   } catch (error) {
-    return res.status(500).json({ error: error.message });
+    return erroInterno(res, error);
   }
 });
 
@@ -43,7 +45,7 @@ routes.post('/categorias', async (req, res) => {
     await db('CATEGORIA_SERVICO').insert({ nome_categoria });
     return res.status(201).json({ message: "Categoria criada com sucesso! 🏷️" });
   } catch (error) {
-    return res.status(500).json({ error: error.message });
+    return erroInterno(res, error);
   }
 });
 
@@ -54,14 +56,17 @@ routes.post('/servicos', async (req, res) => {
     await db('SERVICO').insert({ id_categoria, nome_servico, preco, duracao_minutos, ativo: true });
     return res.status(201).json({ message: "Serviço cadastrado com sucesso! ⚡" });
   } catch (error) {
-    return res.status(500).json({ error: error.message });
+    return erroInterno(res, error);
   }
 });
 
+routes.post('/login', AuthController.login);
 routes.get('/clientes', ClienteController.listar);
 routes.get('/profissionais/escala', async (req, res) => {
   try {
-    const data = req.query.data || new Date().toISOString().slice(0, 10);
+    const hoje = new Date();
+    const dataLocal = `${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, '0')}-${String(hoje.getDate()).padStart(2, '0')}`;
+    const data = req.query.data || dataLocal;
     const [profissionais, agendamentos] = await Promise.all([
       db('PROFISSIONAL')
         .select('id_professional as id_profissional', 'nome', 'telefone', 'ativo')
@@ -90,7 +95,7 @@ routes.get('/profissionais/escala', async (req, res) => {
       }))
     });
   } catch (error) {
-    return res.status(500).json({ error: error.message });
+    return erroInterno(res, error);
   }
 });
 routes.get('/profissionais', async (req, res) => {
@@ -100,7 +105,7 @@ routes.get('/profissionais', async (req, res) => {
       .orderBy('nome');
     return res.json(profissionais);
   } catch (error) {
-    return res.status(500).json({ error: error.message });
+    return erroInterno(res, error);
   }
 });
 routes.get('/servicos', ServicoController.listar);

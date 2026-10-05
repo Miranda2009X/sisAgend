@@ -1,4 +1,5 @@
 const db = require('../database/connection');
+const erroInterno = require('../utils/erro');
 
 module.exports = {
   async listar(req, res) {
@@ -6,7 +7,7 @@ module.exports = {
       const clientes = await db('CLIENTE').select('id_cliente', 'nome', 'telefone', 'email', 'data_cadastro');
       return res.json(clientes);
     } catch (error) {
-      return res.status(500).json({ error: error.message });
+      return erroInterno(res, error);
     }
   }
 };
