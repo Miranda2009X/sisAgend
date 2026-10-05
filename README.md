@@ -14,6 +14,18 @@ npm start
 
 Abra http://localhost:3001
 
+## Acesso administrativo
+
+A tela de profissionais e as operações de gerenciamento exigem autenticação administrativa. Configure no arquivo `.env`:
+
+```env
+ADMIN_EMAIL=admin@exemplo.com
+ADMIN_PASSWORD=defina-uma-senha-forte
+JWT_SECRET=use-um-segredo-aleatorio-com-pelo-menos-32-caracteres
+```
+
+Gere o segredo com `openssl rand -hex 32`. Acesse `/admin.html` para entrar; clientes continuam podendo se cadastrar e agendar, mas não podem abrir a escala ou alterar reservas.
+
 O banco fica em `src/database/database.sqlite`. Para recriá-lo do zero:
 
 ```bash

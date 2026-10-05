@@ -27,7 +27,10 @@ routes.post('/clientes', async (req, res) => {
   }
 });
 
-routes.post('/profissionais', async (req, res) => {
+routes.post('/admin/login', AuthController.loginAdmin);
+routes.post('/admin/logout', AuthController.logoutAdmin);
+
+routes.post('/profissionais', AuthController.requireAdmin, async (req, res) => {
   try {
     const { nome, telefone } = req.body;
     if (!nome || !telefone) return res.status(400).json({ error: "Nome e telefone são obrigatórios." });
@@ -38,7 +41,7 @@ routes.post('/profissionais', async (req, res) => {
   }
 });
 
-routes.post('/categorias', async (req, res) => {
+routes.post('/categorias', AuthController.requireAdmin, async (req, res) => {
   try {
     const { nome_categoria } = req.body;
     if (!nome_categoria) return res.status(400).json({ error: "Nome da categoria é obrigatório." });
@@ -49,7 +52,7 @@ routes.post('/categorias', async (req, res) => {
   }
 });
 
-routes.post('/servicos', async (req, res) => {
+routes.post('/servicos', AuthController.requireAdmin, async (req, res) => {
   try {
     const { id_categoria, nome_servico, preco, duracao_minutos } = req.body;
     if (!id_categoria || !nome_servico || !preco || !duracao_minutos) return res.status(400).json({ error: "Preencha todos os campos." });
@@ -62,7 +65,7 @@ routes.post('/servicos', async (req, res) => {
 
 routes.post('/login', AuthController.login);
 routes.get('/clientes', ClienteController.listar);
-routes.get('/profissionais/escala', async (req, res) => {
+routes.get('/profissionais/escala', AuthController.requireAdmin, async (req, res) => {
   try {
     const hoje = new Date();
     const dataLocal = `${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, '0')}-${String(hoje.getDate()).padStart(2, '0')}`;
@@ -101,7 +104,7 @@ routes.get('/profissionais/escala', async (req, res) => {
 routes.get('/profissionais', async (req, res) => {
   try {
     const profissionais = await db('PROFISSIONAL')
-      .select('id_professional as id_profissional', 'nome', 'telefone', 'ativo')
+      .select('id_professional as id_profissional', 'nome', 'ativo')
       .orderBy('nome');
     return res.json(profissionais);
   } catch (error) {
@@ -112,7 +115,7 @@ routes.get('/servicos', ServicoController.listar);
 
 routes.post('/agendamentos', AgendamentoController.agendar);
 routes.get('/agendamentos', AgendamentoController.listar);
-routes.put('/agendamentos/:id/status', AgendamentoController.atualizarStatus);
-routes.put('/agendamentos/:id/reagendar', AgendamentoController.reagendar);
+routes.put('/agendamentos/:id/status', AuthController.requireAdmin, AgendamentoController.atualizarStatus);
+routes.put('/agendamentos/:id/reagendar', AuthController.requireAdmin, AgendamentoController.reagendar);
 
 module.exports = routes;

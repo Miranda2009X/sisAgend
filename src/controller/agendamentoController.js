@@ -76,14 +76,12 @@ module.exports = {
     try {
       const { data } = req.query;
       const query = db('AGENDAMENTO')
-        .join('CLIENTE', 'AGENDAMENTO.id_cliente', '=', 'CLIENTE.id_cliente')
-        .join('PROFISSIONAL', 'AGENDAMENTO.id_profissional', '=', 'PROFISSIONAL.id_professional')
-        .join('SERVICO', 'AGENDAMENTO.id_servico', '=', 'SERVICO.id_servico')
         .select(
-          'AGENDAMENTO.*',
-          'CLIENTE.nome as cliente_nome',
-          'PROFISSIONAL.nome as profissional_nome',
-          'SERVICO.nome_servico'
+          'id_profissional',
+          'id_servico',
+          'data_hora_inicio',
+          'data_hora_fim',
+          'status'
         );
 
       if (data) {
