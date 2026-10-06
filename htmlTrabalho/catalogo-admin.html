@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Gerencie os serviços, categorias e profissionais da NatiBraids.">
+    <meta name="theme-color" content="#123d42">
+    <title>Catálogo administrativo | NatiBraids</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css.css">
+  </head>
+  <body>
+    <header class="shell topbar">
+      <a class="brand" href="cliente.html" aria-label="NatiBraids início">
+        <span class="brand-mark">N</span><span>NatiBraids</span>
+      </a>
+      <nav class="nav" aria-label="Navegação administrativa">
+        <a href="/profissionais.html">Agenda</a>
+        <a href="/catalogo-admin.html" aria-current="page">Catálogo</a>
+        <button class="button button-quiet" id="admin-logout" type="button">Sair</button>
+      </nav>
+      <button class="menu-toggle" type="button" aria-label="Abrir menu" aria-expanded="false">☰</button>
+    </header>
+
+    <main>
+      <section class="section">
+        <div class="shell">
+          <div class="professionals-heading">
+            <div><span class="eyebrow">Área administrativa</span><h1>Catálogo.</h1></div>
+            <p>Cadastre e atualize os serviços, categorias, profissionais e imagens exibidos no site.</p>
+          </div>
+          <div class="catalog-admin-grid">
+            <section class="catalog-admin-panel">
+              <h2>Categorias</h2>
+              <form id="category-form" class="catalog-admin-form">
+                <label for="category-name">Nova categoria</label>
+                <input id="category-name" name="nome_categoria" required maxlength="100">
+                <button class="button button-primary" type="submit">Adicionar categoria</button>
+              </form>
+              <div id="category-list" class="catalog-admin-list" aria-live="polite"></div>
+            </section>
+
+            <section class="catalog-admin-panel">
+              <h2>Profissionais</h2>
+              <form id="professional-form" class="catalog-admin-form">
+                <label for="professional-name">Nome</label>
+                <input id="professional-name" name="nome" required maxlength="120">
+                <label for="professional-phone">Telefone</label>
+                <input id="professional-phone" name="telefone" type="tel" required maxlength="30">
+                <fieldset class="catalog-service-options">
+                  <legend>Serviços realizados</legend>
+                  <div id="professional-services"><p class="empty-state">Carregando serviços...</p></div>
+                </fieldset>
+                <button class="button button-primary" type="submit">Adicionar profissional</button>
+              </form>
+              <div id="professional-list" class="catalog-admin-list" aria-live="polite"></div>
+            </section>
+
+            <section class="catalog-admin-panel catalog-admin-panel-wide">
+              <h2>Serviços</h2>
+              <form id="service-form" class="catalog-admin-form catalog-service-form">
+                <label for="service-name">Nome do serviço</label>
+                <input id="service-name" name="nome_servico" required maxlength="120">
+                <label for="service-category">Categoria</label>
+                <select id="service-category" name="id_categoria" required></select>
+                <label for="service-price">Preço (R$)</label>
+                <input id="service-price" name="preco" type="number" min="0" step="0.01" required>
+                <label for="service-duration">Duração (minutos)</label>
+                <input id="service-duration" name="duracao_minutos" type="number" min="1" step="1" required>
+                <label for="service-description">Descrição</label>
+                <textarea id="service-description" name="descricao" maxlength="1000" rows="3"></textarea>
+                <label for="service-image">URL ou caminho da imagem</label>
+                <input id="service-image" name="imagem_url" type="text" placeholder="/imagens/exemplo.jpg">
+                <button class="button button-primary" type="submit">Adicionar serviço</button>
+              </form>
+              <div id="service-list" class="catalog-admin-list" aria-live="polite"></div>
+            </section>
+          </div>
+          <p class="form-message" id="catalog-message" role="status" aria-live="polite"></p>
+        </div>
+      </section>
+    </main>
+
+    <footer class="shell footer">
+      <div class="footer-row">
+        <small>© 2026 NatiBraids. Área administrativa.</small>
+        <div class="socials"><a href="/profissionais.html">Voltar à agenda</a></div>
+      </div>
+    </footer>
+
+    <script>
+      const apiUrl = window.location.origin;
+      const categoryList = document.querySelector("#category-list");
+      const professionalList = document.querySelector("#professional-list");
+      const serviceList = document.querySelector("#service-list");
+      const categorySelect = document.querySelector("#service-category");
+      const professionalServices = document.querySelector("#professional-services");
+      const message = document.querySelector("#catalog-message");
+      let catalog = { categorias: [], profissionais: [], servicos: [], profissionalServicos: [] };
+
+      const escapeHtml = value => String(value).replace(/[&<>"']/g, character => ({
+        "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
+      })[character]);
+
+      async function request(path, options = {}) {
+        const response = await fetch(`${apiUrl}${path}`, {
+          ...options,
+          headers: { ...(options.body ? { "Content-Type": "application/json" } : {}), ...options.headers }
+        });
+        const result = response.status === 204 ? {} : await response.json();
+        if (response.status === 401) {
+          window.location.replace("/admin.html");
+          throw new Error("Sua sessão administrativa expirou.");
+        }
+        if (!response.ok) throw new Error(result.error || "Não foi possível concluir a operação.");
+        return result;
+      }
+
+      function showMessage(text, isError = false) {
+        message.className = `form-message ${isError ? "error" : "success"}`;
+        message.textContent = text;
+      }
+
+      function renderCatalog() {
+        categorySelect.innerHTML = catalog.categorias.map(category =>
+          `<option value="${category.id_categoria}">${escapeHtml(category.nome_categoria)}</option>`
+        ).join("");
+        categoryList.innerHTML = catalog.categorias.length ? catalog.categorias.map(category => `
+          <article class="catalog-admin-item">
+            <span>${escapeHtml(category.nome_categoria)}</span>
+            <button class="appointment-action" type="button" data-action="edit-category" data-id="${category.id_categoria}">Renomear</button>
+          </article>`).join("") : '<p class="empty-state">Cadastre a primeira categoria.</p>';
+
+        professionalServices.innerHTML = catalog.servicos.length ? catalog.servicos.map(service => `
+          <label class="catalog-service-option"><input type="checkbox" name="ids_servico" value="${service.id_servico}"> ${escapeHtml(service.nome_servico)}</label>
+        `).join("") : '<p class="empty-state">Cadastre serviços antes de associá-los.</p>';
+        professionalList.innerHTML = catalog.profissionais.length ? catalog.profissionais.map(professional => {
+          const associated = catalog.profissionalServicos.filter(link => Number(link.id_profissional) === Number(professional.id_profissional));
+          const names = associated.map(link => catalog.servicos.find(service => Number(service.id_servico) === Number(link.id_servico))?.nome_servico).filter(Boolean);
+          return `<article class="catalog-admin-item catalog-admin-item-stacked">
+            <div><strong>${escapeHtml(professional.nome)}</strong><small>${escapeHtml(professional.telefone)} · ${professional.ativo ? "Ativa" : "Inativa"}</small>
+              <small>Serviços: ${escapeHtml(names.join(", ") || "Nenhum associado")}</small></div>
+            <div class="catalog-admin-actions">
+              <button class="appointment-action" type="button" data-action="edit-professional" data-id="${professional.id_profissional}">Editar</button>
+              <button class="appointment-action" type="button" data-action="toggle-professional" data-id="${professional.id_profissional}" data-active="${professional.ativo}">${professional.ativo ? "Desativar" : "Ativar"}</button>
+            </div>
+          </article>`;
+        }).join("") : '<p class="empty-state">Nenhuma profissional cadastrada.</p>';
+
+        serviceList.innerHTML = catalog.servicos.length ? catalog.servicos.map(service => `
+          <article class="catalog-admin-item catalog-admin-item-stacked">
+            <div><strong>${escapeHtml(service.nome_servico)}</strong><small>${escapeHtml(service.nome_categoria)} · R$ ${Number(service.preco).toFixed(2)} · ${Number(service.duracao_minutos)} min · ${service.ativo ? "Ativo" : "Inativo"}</small></div>
+            <div class="catalog-admin-actions">
+              <button class="appointment-action" type="button" data-action="edit-service" data-id="${service.id_servico}">Editar</button>
+              <button class="appointment-action" type="button" data-action="toggle-service" data-id="${service.id_servico}" data-active="${service.ativo}">${service.ativo ? "Desativar" : "Ativar"}</button>
+            </div>
+          </article>`).join("") : '<p class="empty-state">Nenhum serviço cadastrado.</p>';
+      }
+
+      async function loadCatalog() {
+        catalog = await request("/admin/catalogo");
+        renderCatalog();
+      }
+
+      document.querySelector("#category-form").addEventListener("submit", async event => {
+        event.preventDefault();
+        const form = event.currentTarget;
+        try {
+          await request("/categorias", { method: "POST", body: JSON.stringify(Object.fromEntries(new FormData(form))) });
+          form.reset();
+          await loadCatalog();
+          showMessage("Categoria adicionada.");
+        } catch (error) { showMessage(error.message, true); }
+      });
+
+      document.querySelector("#professional-form").addEventListener("submit", async event => {
+        event.preventDefault();
+        const form = event.currentTarget;
+        const data = new FormData(form);
+        const payload = {
+          nome: data.get("nome"),
+          telefone: data.get("telefone"),
+          ids_servico: data.getAll("ids_servico")
+        };
+        try {
+          await request("/profissionais", { method: "POST", body: JSON.stringify(payload) });
+          form.reset();
+          await loadCatalog();
+          showMessage("Profissional adicionada.");
+        } catch (error) { showMessage(error.message, true); }
+      });
+
+      document.querySelector("#service-form").addEventListener("submit", async event => {
+        event.preventDefault();
+        const form = event.currentTarget;
+        const data = Object.fromEntries(new FormData(form));
+        data.preco = Number(data.preco);
+        data.duracao_minutos = Number(data.duracao_minutos);
+        try {
+          await request("/servicos", { method: "POST", body: JSON.stringify(data) });
+          form.reset();
+          await loadCatalog();
+          showMessage("Serviço adicionado.");
+        } catch (error) { showMessage(error.message, true); }
+      });
+
+      document.querySelector(".catalog-admin-grid").addEventListener("click", async event => {
+        const button = event.target.closest("button[data-action]");
+        if (!button) return;
+        const id = Number(button.dataset.id);
+        const action = button.dataset.action;
+        const professional = catalog.profissionais.find(item => Number(item.id_profissional) === id);
+        const service = catalog.servicos.find(item => Number(item.id_servico) === id);
+        const category = catalog.categorias.find(item => Number(item.id_categoria) === id);
+        try {
+          if (action === "edit-category" && category) {
+            const name = window.prompt("Nome da categoria", category.nome_categoria);
+            if (name === null) return;
+            await request(`/categorias/${id}`, { method: "PUT", body: JSON.stringify({ nome_categoria: name }) });
+          } else if (action === "toggle-professional" && professional) {
+            await request(`/profissionais/${id}`, { method: "PUT", body: JSON.stringify({ ativo: button.dataset.active !== "true" }) });
+          } else if (action === "edit-professional" && professional) {
+            const nome = window.prompt("Nome da profissional", professional.nome);
+            if (nome === null) return;
+            const telefone = window.prompt("Telefone", professional.telefone);
+            if (telefone === null) return;
+            const currentIds = catalog.profissionalServicos.filter(link => Number(link.id_profissional) === id).map(link => String(link.id_servico));
+            const selected = window.prompt(`IDs dos serviços separados por vírgula:\n${catalog.servicos.map(item => `${item.id_servico}: ${item.nome_servico}`).join("\n")}`, currentIds.join(","));
+            if (selected === null) return;
+            const ids_servico = selected.trim() ? selected.split(",").map(value => value.trim()) : [];
+            await request(`/profissionais/${id}`, { method: "PUT", body: JSON.stringify({ nome, telefone, ids_servico }) });
+          } else if (action === "toggle-service" && service) {
+            await request(`/servicos/${id}`, { method: "PUT", body: JSON.stringify({ ativo: button.dataset.active !== "true" }) });
+          } else if (action === "edit-service" && service) {
+            const nome_servico = window.prompt("Nome do serviço", service.nome_servico);
+            if (nome_servico === null) return;
+            const id_categoria = window.prompt(`ID da categoria:\n${catalog.categorias.map(item => `${item.id_categoria}: ${item.nome_categoria}`).join("\n")}`, String(service.id_categoria));
+            if (id_categoria === null) return;
+            const preco = window.prompt("Preço (R$)", String(service.preco));
+            if (preco === null) return;
+            const duracao_minutos = window.prompt("Duração (minutos)", String(service.duracao_minutos));
+            if (duracao_minutos === null) return;
+            const descricao = window.prompt("Descrição", service.descricao || "");
+            if (descricao === null) return;
+            const imagem_url = window.prompt("URL/caminho da imagem (em branco para remover)", service.imagem_url || "");
+            if (imagem_url === null) return;
+            await request(`/servicos/${id}`, { method: "PUT", body: JSON.stringify({ nome_servico, id_categoria, preco, duracao_minutos, descricao, imagem_url }) });
+          }
+          await loadCatalog();
+          showMessage("Catálogo atualizado.");
+        } catch (error) { showMessage(error.message, true); }
+      });
+
+      document.querySelector("#admin-logout").addEventListener("click", async () => {
+        await fetch("/admin/logout", { method: "POST" });
+        window.location.assign("/admin.html");
+      });
+
+      const menuButton = document.querySelector(".menu-toggle");
+      const nav = document.querySelector(".nav");
+      menuButton.addEventListener("click", () => {
+        const isOpen = menuButton.getAttribute("aria-expanded") === "true";
+        menuButton.setAttribute("aria-expanded", String(!isOpen));
+        nav.style.display = isOpen ? "none" : "flex";
+        nav.style.flexDirection = "column";
+        nav.style.position = "absolute";
+        nav.style.right = "18px";
+        nav.style.top = "70px";
+        nav.style.background = "#fffdf8";
+        nav.style.padding = "18px";
+        nav.style.borderRadius = "12px";
+        nav.style.boxShadow = "0 12px 30px rgba(18, 61, 66, .14)";
+      });
+
+      loadCatalog().catch(error => showMessage(error.message, true));
+    </script>
+  </body>
+</html>
