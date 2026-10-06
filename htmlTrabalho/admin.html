@@ -16,8 +16,12 @@
         <span class="brand-mark">N</span><span>NatiBraids</span>
       </a>
       <nav class="nav" aria-label="Navegação principal">
-        <a href="cliente.html">Voltar ao início</a>
+        <a href="cliente.html#inicio">Início</a>
+        <a href="cliente.html#recursos">Serviços</a>
+        <a href="cadastro.html">Cadastrar</a>
+        <a href="agendamento.html">Agendamento</a>
       </nav>
+      <button class="menu-toggle" type="button" aria-label="Abrir menu" aria-expanded="false">☰</button>
     </header>
 
     <main>
@@ -50,6 +54,28 @@
     <script>
       const form = document.querySelector("#admin-login-form");
       const message = document.querySelector("#admin-login-message");
+      const menuButton = document.querySelector(".menu-toggle");
+      const nav = document.querySelector(".nav");
+
+      menuButton.addEventListener("click", () => {
+        const isOpen = menuButton.getAttribute("aria-expanded") === "true";
+        menuButton.setAttribute("aria-expanded", String(!isOpen));
+        nav.style.display = isOpen ? "none" : "flex";
+        nav.style.flexDirection = "column";
+        nav.style.position = "absolute";
+        nav.style.right = "18px";
+        nav.style.top = "70px";
+        nav.style.background = "#fffdf8";
+        nav.style.padding = "18px";
+        nav.style.borderRadius = "12px";
+        nav.style.boxShadow = "0 12px 30px rgba(18, 61, 66, .14)";
+      });
+
+      nav.addEventListener("click", event => {
+        if (!event.target.closest("a") || !window.matchMedia("(max-width: 780px)").matches) return;
+        menuButton.setAttribute("aria-expanded", "false");
+        nav.removeAttribute("style");
+      });
 
       form.addEventListener("submit", async event => {
         event.preventDefault();

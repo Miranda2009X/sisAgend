@@ -17,9 +17,10 @@
         <span class="brand-mark">N</span><span>NatiBraids</span>
       </a>
       <nav class="nav" aria-label="Navegação principal">
+        <a href="cliente.html#inicio">Início</a>
         <a href="cliente.html#recursos">Serviços</a>
-        <a href="agendamento.html">Agendamento</a>
         <a href="cadastro.html" aria-current="page">Cadastrar</a>
+        <a href="agendamento.html">Agendamento</a>
       </nav>
       <button class="menu-toggle" type="button" aria-label="Abrir menu" aria-expanded="false">☰</button>
     </header>
@@ -150,6 +151,12 @@
         nav.style.padding = "18px";
         nav.style.borderRadius = "12px";
         nav.style.boxShadow = "0 12px 30px rgba(18, 61, 66, .14)";
+      });
+
+      nav.addEventListener("click", event => {
+        if (!event.target.closest("a") || !window.matchMedia("(max-width: 780px)").matches) return;
+        menuButton.setAttribute("aria-expanded", "false");
+        nav.removeAttribute("style");
       });
     </script>
   </body>
