@@ -35,7 +35,7 @@
               <span class="eyebrow">Quem cuida de você</span>
               <h1>Profissionais.</h1>
             </div>
-            <p>Visualize os horários reservados por dia ou consulte a agenda do mês inteiro.</p>
+            <p>Visualize os horários reservados por dia ou consulte a agenda do mês inteiro.<br><a class="back-link" href="/catalogo-admin.html">Gerenciar serviços, categorias e equipe →</a></p>
           </div>
 
           <div class="professionals-layout">
@@ -94,6 +94,22 @@
         </div>
       </form>
     </dialog>
+    <dialog class="cancellation-dialog" id="reschedule-dialog">
+      <form id="reschedule-form">
+        <h2>Reagendar reserva</h2>
+        <p>Escolha uma nova data e um horário livre para este atendimento.</p>
+        <label for="reschedule-date">Nova data</label>
+        <input id="reschedule-date" type="date" required>
+        <label for="reschedule-time">Novo horário</label>
+        <select id="reschedule-time" required>
+          <option value="">Selecione uma data</option>
+        </select>
+        <div class="dialog-actions">
+          <button class="appointment-action" type="button" id="close-reschedule">Voltar</button>
+          <button class="appointment-action confirm" type="submit">Confirmar novo horário</button>
+        </div>
+      </form>
+    </dialog>
 
     <script>
       const apiUrl = window.location.origin;
@@ -117,8 +133,16 @@
       const cancellationForm = document.querySelector("#cancellation-form");
       const cancellationReason = document.querySelector("#cancellation-reason");
       const closeCancellation = document.querySelector("#close-cancellation");
+      const rescheduleDialog = document.querySelector("#reschedule-dialog");
+      const rescheduleForm = document.querySelector("#reschedule-form");
+      const rescheduleDate = document.querySelector("#reschedule-date");
+      const rescheduleTime = document.querySelector("#reschedule-time");
+      const closeReschedule = document.querySelector("#close-reschedule");
       const logoutButton = document.querySelector("#admin-logout");
       let appointmentToCancel = null;
+      let appointmentToReschedule = null;
+      let rescheduleServiceDuration = 0;
+      let rescheduleProfessionalId = null;
       let scheduleView = "day";
 
       logoutButton.addEventListener("click", async () => {
@@ -128,6 +152,12 @@
 
       function formatTime(value) {
         return new Date(value).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+      }
+
+      function escapeHtml(value) {
+        return String(value).replace(/[&<>"']/g, character => ({
+          "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
+        })[character]);
       }
 
       function formatDateInput(date = new Date()) {
@@ -176,13 +206,14 @@
                 <tr>
                   ${monthly ? `<td>${new Date(appointment.data_hora_inicio).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" })}</td>` : ""}
                   <td class="schedule-time">${formatTime(appointment.data_hora_inicio)}–${formatTime(appointment.data_hora_fim)}</td>
-                  <td class="schedule-professional"><strong>${appointment.profissional_nome}</strong><small>${appointment.profissional_telefone || ""}</small></td>
-                  <td>${appointment.cliente_nome}</td>
-                  <td>${appointment.nome_servico}</td>
-                  <td><span class="appointment-status status-${appointment.status.toLowerCase()}">${appointment.status}</span></td>
+                  <td class="schedule-professional"><strong>${escapeHtml(appointment.profissional_nome)}</strong><small>${escapeHtml(appointment.profissional_telefone || "")}</small></td>
+                  <td>${escapeHtml(appointment.cliente_nome)}</td>
+                  <td>${escapeHtml(appointment.nome_servico)}</td>
+                  <td><span class="appointment-status status-${escapeHtml(appointment.status.toLowerCase())}">${escapeHtml(appointment.status)}</span></td>
                   <td class="schedule-actions"><div class="appointment-actions">
                     ${appointment.status === "Pendente" ? `<button class="appointment-action confirm" type="button" data-id="${appointment.id_agendamento}" data-status="Confirmado">Confirmar</button>` : ""}
                     ${["Pendente", "Confirmado"].includes(appointment.status) ? `<button class="appointment-action cancel" type="button" data-id="${appointment.id_agendamento}" data-status="Cancelado">Cancelar</button>` : ""}
+                    ${["Pendente", "Confirmado"].includes(appointment.status) ? `<button class="appointment-action" type="button" data-id="${appointment.id_agendamento}" data-reschedule="${appointment.id_servico}" data-professional="${appointment.id_profissional}" data-duration="${appointment.duracao_minutos}">Reagendar</button>` : ""}
                   </div></td>
                 </tr>
               `).join("")}
@@ -190,7 +221,11 @@
           </table>
         ` : `<p class="empty-state table-empty">${professionals.length ? monthly ? "Nenhuma reserva para este mês." : "Nenhuma reserva para esta data." : "Nenhuma profissional cadastrada ainda."}</p>`;
         list.querySelectorAll(".appointment-action").forEach(button => {
-          button.addEventListener("click", () => button.dataset.status === "Cancelado" ? openCancellation(button) : updateAppointmentStatus(button));
+          button.addEventListener("click", () => {
+            if (button.dataset.reschedule) return openReschedule(button);
+            if (button.dataset.status === "Cancelado") return openCancellation(button);
+            updateAppointmentStatus(button);
+          });
         });
       }
 
@@ -222,6 +257,49 @@
         cancellationReason.focus();
       }
 
+      function openReschedule(button) {
+        appointmentToReschedule = button;
+        rescheduleProfessionalId = Number(button.dataset.professional);
+        rescheduleServiceDuration = Number(button.dataset.duration);
+        rescheduleDate.min = formatDateInput();
+        rescheduleDate.value = scheduleView === "day" ? scheduleDate.value : formatDateInput();
+        rescheduleTime.innerHTML = '<option value="">Carregando horários...</option>';
+        rescheduleDialog.showModal();
+        loadRescheduleSlots();
+      }
+
+      async function loadRescheduleSlots() {
+        rescheduleTime.innerHTML = '<option value="">Carregando horários...</option>';
+        if (!rescheduleDate.value || !rescheduleProfessionalId || !rescheduleServiceDuration) return;
+        try {
+          const response = await fetch(`${apiUrl}/profissionais/escala?data=${rescheduleDate.value}`);
+          const result = await response.json();
+          if (!response.ok) throw new Error(result.error || "Não foi possível carregar os horários.");
+          const professional = result.profissionais.find(item => Number(item.id_profissional) === rescheduleProfessionalId);
+          const appointments = professional ? professional.agendamentos : [];
+          const currentId = Number(appointmentToReschedule.dataset.id);
+          const options = [];
+          for (let hour = 8; hour < 18; hour += 1) {
+            const start = `${rescheduleDate.value}T${String(hour).padStart(2, "0")}:00`;
+            const end = new Date(new Date(start).getTime() + rescheduleServiceDuration * 60000);
+            if (end.getHours() > 18 || (end.getHours() === 18 && end.getMinutes() > 0) || new Date(start) < new Date()) continue;
+            const conflict = appointments.some(appointment =>
+              Number(appointment.id_agendamento) !== currentId &&
+              appointment.status !== "Cancelado" &&
+              new Date(appointment.data_hora_inicio) < end &&
+              new Date(appointment.data_hora_fim) > new Date(start)
+            );
+            if (!conflict) options.push(`<option value="${start}">${String(hour).padStart(2, "0")}:00–${String(end.getHours()).padStart(2, "0")}:${String(end.getMinutes()).padStart(2, "0")}</option>`);
+          }
+          rescheduleTime.innerHTML = options.length
+            ? '<option value="">Selecione um horário</option>' + options.join("")
+            : '<option value="">Nenhum horário livre nesta data</option>';
+        } catch (error) {
+          rescheduleTime.innerHTML = '<option value="">Erro ao carregar horários</option>';
+          window.alert(error.message);
+        }
+      }
+
       closeCancellation.addEventListener("click", () => cancellationDialog.close());
       cancellationForm.addEventListener("submit", event => {
         event.preventDefault();
@@ -233,6 +311,29 @@
         appointmentToCancel.dataset.reason = reason;
         cancellationDialog.close();
         updateAppointmentStatus(appointmentToCancel);
+      });
+
+      closeReschedule.addEventListener("click", () => rescheduleDialog.close());
+      rescheduleDate.addEventListener("change", loadRescheduleSlots);
+      rescheduleForm.addEventListener("submit", async event => {
+        event.preventDefault();
+        const button = rescheduleForm.querySelector("button[type='submit']");
+        button.disabled = true;
+        try {
+          const response = await fetch(`${apiUrl}/agendamentos/${appointmentToReschedule.dataset.id}/reagendar`, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ data_hora_inicio: rescheduleTime.value })
+          });
+          const result = await response.json();
+          if (!response.ok) throw new Error(result.error || "Não foi possível reagendar.");
+          rescheduleDialog.close();
+          await loadProfessionals();
+        } catch (error) {
+          window.alert(error.message.includes("Failed to fetch") ? "Inicie o servidor para reagendar." : error.message);
+        } finally {
+          button.disabled = false;
+        }
       });
 
       async function loadProfessionals() {
