@@ -31,41 +31,65 @@
         <div class="shell appointment-layout">
           <div class="appointment-intro">
             <span class="eyebrow">Seu próximo visual</span>
-            <h1>Crie seu cadastro.</h1>
-            <p>Salve seus dados e agende seu horário com mais praticidade.</p>
+            <h1>Entre para agendar.</h1>
+            <p>Acesse sua conta ou crie seu cadastro para reservar e acompanhar seus horários.</p>
             <a class="back-link" href="cliente.html">← Voltar para NatiBraids</a>
           </div>
 
-          <form class="schedule-card" id="client-form">
-            <div class="card-top">
-              <h2>Cadastro de cliente</h2>
-              <span class="status-dot" aria-label="Sistema online"></span>
+          <div>
+            <div class="account-switch" role="tablist" aria-label="Acesso à conta">
+              <button class="account-tab active" id="register-tab" type="button" role="tab" aria-selected="true" aria-controls="client-form">Criar cadastro</button>
+              <button class="account-tab" id="login-tab" type="button" role="tab" aria-selected="false" aria-controls="client-login-form">Entrar</button>
             </div>
-            <div class="form-grid">
-              <div class="field full">
-                <label for="client-name">Nome completo</label>
-                <input id="client-name" name="nome" type="text" autocomplete="name" required>
+            <form class="schedule-card account-card" id="client-form" role="tabpanel" aria-labelledby="register-tab">
+              <div class="card-top">
+                <h2>Cadastro de cliente</h2>
+                <span class="status-dot" aria-label="Sistema online"></span>
               </div>
-              <div class="field">
-                <label for="client-phone">Telefone</label>
-                <input id="client-phone" name="telefone" type="tel" autocomplete="tel" placeholder="(41) 99999-9999" required>
+              <div class="form-grid">
+                <div class="field full">
+                  <label for="client-name">Nome completo</label>
+                  <input id="client-name" name="nome" type="text" autocomplete="name" required>
+                </div>
+                <div class="field">
+                  <label for="client-phone">Telefone</label>
+                  <input id="client-phone" name="telefone" type="tel" autocomplete="tel" placeholder="(41) 99999-9999" required>
+                </div>
+                <div class="field">
+                  <label for="client-email">E-mail</label>
+                  <input id="client-email" name="email" type="email" autocomplete="email" required>
+                </div>
+                <div class="field">
+                  <label for="client-password">Senha</label>
+                  <input id="client-password" name="senha" type="password" minlength="6" autocomplete="new-password" required>
+                </div>
+                <div class="field">
+                  <label for="client-password-confirm">Confirmar senha</label>
+                  <input id="client-password-confirm" type="password" minlength="6" autocomplete="new-password" required>
+                </div>
               </div>
-              <div class="field">
-                <label for="client-email">E-mail</label>
-                <input id="client-email" name="email" type="email" autocomplete="email" required>
+              <button class="button button-primary form-button" type="submit">Criar cadastro <span aria-hidden="true">→</span></button>
+              <div class="form-message" id="client-message" role="status" aria-live="polite"></div>
+            </form>
+            <form class="schedule-card account-card" id="client-login-form" role="tabpanel" aria-labelledby="login-tab" hidden>
+              <div class="card-top">
+                <h2>Entrar na sua conta</h2>
+                <span class="status-dot" aria-label="Sistema online"></span>
               </div>
-              <div class="field">
-                <label for="client-password">Senha</label>
-                <input id="client-password" name="senha" type="password" minlength="6" autocomplete="new-password" required>
+              <div class="form-grid">
+                <div class="field full">
+                  <label for="login-email">E-mail</label>
+                  <input id="login-email" name="email" type="email" autocomplete="username" required>
+                </div>
+                <div class="field full">
+                  <label for="login-password">Senha</label>
+                  <input id="login-password" name="senha" type="password" autocomplete="current-password" required>
+                </div>
               </div>
-              <div class="field">
-                <label for="client-password-confirm">Confirmar senha</label>
-                <input id="client-password-confirm" type="password" minlength="6" autocomplete="new-password" required>
-              </div>
-            </div>
-            <button class="button button-primary form-button" type="submit">Criar cadastro <span aria-hidden="true">→</span></button>
-            <div class="form-message" id="client-message" role="status" aria-live="polite"></div>
-          </form>
+              <button class="button button-primary form-button" type="submit">Entrar e continuar <span aria-hidden="true">→</span></button>
+              <div class="form-message" id="login-message" role="status" aria-live="polite"></div>
+            </form>
+          </div>
         </div>
       </section>
     </main>
@@ -75,7 +99,7 @@
       <p class="eyebrow">Cadastro concluído</p>
       <h2 id="registration-success-title">Cadastro realizado!</h2>
       <p id="registration-success-description">Seus dados foram salvos. Agora você já pode agendar.</p>
-      <button class="button button-primary" id="close-registration-success" type="button">Continuar</button>
+      <button class="button button-primary" id="close-registration-success" type="button">Ir para agendamento</button>
     </dialog>
 
     <footer class="shell footer">
@@ -94,6 +118,36 @@
       const closeSuccessDialog = document.querySelector("#close-registration-success");
       const menuButton = document.querySelector(".menu-toggle");
       const nav = document.querySelector(".nav");
+      const loginForm = document.querySelector("#client-login-form");
+      const loginMessage = document.querySelector("#login-message");
+      const registerTab = document.querySelector("#register-tab");
+      const loginTab = document.querySelector("#login-tab");
+
+      function nextPath() {
+        const next = new URLSearchParams(window.location.search).get("next");
+        if (!next || !next.startsWith("/") || next.startsWith("//")) return "/agendamento.html";
+        try {
+          const target = new URL(next, window.location.origin);
+          return target.origin === window.location.origin
+            ? `${target.pathname}${target.search}${target.hash}`
+            : "/agendamento.html";
+        } catch (error) {
+          return "/agendamento.html";
+        }
+      }
+
+      function selectAccountTab(tab) {
+        const showLogin = tab === loginTab;
+        form.hidden = showLogin;
+        loginForm.hidden = !showLogin;
+        registerTab.classList.toggle("active", !showLogin);
+        registerTab.setAttribute("aria-selected", String(!showLogin));
+        loginTab.classList.toggle("active", showLogin);
+        loginTab.setAttribute("aria-selected", String(showLogin));
+      }
+
+      registerTab.addEventListener("click", () => selectAccountTab(registerTab));
+      loginTab.addEventListener("click", () => selectAccountTab(loginTab));
 
       function formatPhone(value) {
         const digits = value.replace(/\D/g, "").slice(0, 11);
@@ -128,7 +182,6 @@
           if (!response.ok) throw new Error(result.error || "Não foi possível concluir o cadastro.");
           message.className = "form-message";
           message.textContent = "";
-          form.reset();
           successDialog.showModal();
         } catch (error) {
           message.className = "form-message error";
@@ -138,7 +191,31 @@
         }
       });
 
-      closeSuccessDialog.addEventListener("click", () => successDialog.close());
+      closeSuccessDialog.addEventListener("click", () => {
+        successDialog.close();
+        window.location.assign(nextPath());
+      });
+
+      loginForm.addEventListener("submit", async event => {
+        event.preventDefault();
+        const button = loginForm.querySelector("button[type='submit']");
+        button.disabled = true;
+        loginMessage.className = "form-message";
+        try {
+          const response = await fetch(`${apiUrl}/login`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(Object.fromEntries(new FormData(loginForm)))
+          });
+          const result = await response.json();
+          if (!response.ok) throw new Error(result.error || "Não foi possível entrar.");
+          window.location.assign(nextPath());
+        } catch (error) {
+          loginMessage.className = "form-message error";
+          loginMessage.textContent = error.message.includes("Failed to fetch") ? "Não foi possível conectar ao servidor." : error.message;
+          button.disabled = false;
+        }
+      });
 
       menuButton.addEventListener("click", () => {
         const isOpen = menuButton.getAttribute("aria-expanded") === "true";
