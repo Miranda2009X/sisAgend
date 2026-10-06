@@ -1,4 +1,5 @@
 exports.up = function(knex) {
+  // Liga cliente, profissional e serviço ao intervalo e status da reserva.
   return knex.schema.createTable('AGENDAMENTO', function(table) {
     table.increments('id_agendamento').primary();
     table.integer('id_cliente').unsigned().notNullable();

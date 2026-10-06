@@ -9,6 +9,7 @@ const AgendamentoController = require('./controller/agendamentoController');
 const AuthController = require('./controller/authController');
 const erroInterno = require('./utils/erro');
 
+// Cria a conta já armazenando a senha em formato de hash, nunca em texto puro.
 routes.post('/clientes', async (req, res) => {
   try {
     const { nome, telefone, email, senha } = req.body;
@@ -30,6 +31,7 @@ routes.post('/clientes', async (req, res) => {
 routes.post('/admin/login', AuthController.loginAdmin);
 routes.post('/admin/logout', AuthController.logoutAdmin);
 
+// Alterações no catálogo e nos profissionais exigem sessão administrativa.
 routes.post('/profissionais', AuthController.requireAdmin, async (req, res) => {
   try {
     const { nome, telefone } = req.body;
@@ -65,6 +67,8 @@ routes.post('/servicos', AuthController.requireAdmin, async (req, res) => {
 
 routes.post('/login', AuthController.login);
 routes.get('/clientes', ClienteController.listar);
+
+// Retorna a escala do dia ou de um mês; a validação evita filtros de data ambíguos.
 routes.get('/profissionais/escala', AuthController.requireAdmin, async (req, res) => {
   try {
     const hoje = new Date();
@@ -84,6 +88,8 @@ routes.get('/profissionais/escala', AuthController.requireAdmin, async (req, res
     const proximoMes = inicioMes
       ? new Date(Date.UTC(Number(mes.slice(0, 4)), Number(mes.slice(5, 7)), 1)).toISOString().slice(0, 10)
       : null;
+
+    // Busca a equipe e os agendamentos em paralelo; para o mês, usa intervalo semiaberto.
     const [profissionais, agendamentos] = await Promise.all([
       db('PROFISSIONAL')
         .select('id_professional as id_profissional', 'nome', 'telefone', 'ativo')
@@ -110,6 +116,7 @@ routes.get('/profissionais/escala', AuthController.requireAdmin, async (req, res
     return res.json({
       data,
       ...(consultaMensal ? { mes } : {}),
+      // Agrupa cada agendamento junto ao profissional correspondente.
       profissionais: profissionais.map(profissional => ({
         ...profissional,
         agendamentos: agendamentos.filter(
@@ -133,6 +140,7 @@ routes.get('/profissionais', async (req, res) => {
 });
 routes.get('/servicos', ServicoController.listar);
 
+// Operações de agenda; alterações de status e reagendamentos são administrativas.
 routes.post('/agendamentos', AgendamentoController.agendar);
 routes.get('/agendamentos', AgendamentoController.listar);
 routes.put('/agendamentos/:id/status', AuthController.requireAdmin, AgendamentoController.atualizarStatus);

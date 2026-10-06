@@ -1,4 +1,5 @@
 exports.up = function(knex) {
+  // O campo ativo permite desativar profissionais sem apagar seus agendamentos.
   return knex.schema.createTable('PROFISSIONAL', function(table) {
     table.increments('id_professional').primary();
     table.string('nome').notNullable();

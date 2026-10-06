@@ -8,6 +8,7 @@ const procedimentos = [
 ];
 
 exports.up = async function(knex) {
+  // Cria a categoria quando necessário e evita duplicar serviços já cadastrados.
   let categoria = await knex('CATEGORIA_SERVICO')
     .where('nome_categoria', 'Procedimentos capilares')
     .first();
@@ -33,6 +34,7 @@ exports.up = async function(knex) {
 };
 
 exports.down = async function(knex) {
+  // Remove a categoria e todos os serviços associados a ela.
   const categoria = await knex('CATEGORIA_SERVICO')
     .where('nome_categoria', 'Procedimentos capilares')
     .first();

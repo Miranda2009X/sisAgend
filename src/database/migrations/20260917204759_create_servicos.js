@@ -1,4 +1,5 @@
 exports.up = function(knex) {
+  // Cada serviço informa sua categoria, preço e duração usada nos agendamentos.
   return knex.schema.createTable('SERVICO', function(table) {
     table.increments('id_servico').primary();
     table.integer('id_categoria').unsigned().notNullable();

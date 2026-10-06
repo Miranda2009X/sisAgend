@@ -1,4 +1,5 @@
 exports.up = function(knex) {
+  // Associa profissionais aos serviços que podem realizar.
   return knex.schema.createTable('PROFISSIONAL_SERVICO', function(table) {
     table.integer('id_profissional').unsigned().notNullable();
     table.integer('id_servico').unsigned().notNullable();

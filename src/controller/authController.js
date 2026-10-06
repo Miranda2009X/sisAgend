@@ -6,6 +6,7 @@ const erroInterno = require('../utils/erro');
 const ADMIN_COOKIE = 'sisagend_admin';
 const ADMIN_SESSION_SECONDS = 8 * 60 * 60;
 
+// Recusa sessões administrativas se o segredo não estiver configurado com tamanho mínimo.
 function getAdminSecret() {
   const secret = process.env.JWT_SECRET;
   return secret && secret.length >= 32 ? secret : null;
@@ -18,6 +19,7 @@ function secureCompare(first, second) {
 }
 
 function createAdminToken() {
+  // Assina o payload e define expiração para permitir sessão sem estado no servidor.
   const payload = Buffer.from(JSON.stringify({
     sub: 'admin',
     exp: Math.floor(Date.now() / 1000) + ADMIN_SESSION_SECONDS
@@ -27,6 +29,7 @@ function createAdminToken() {
 }
 
 function isAdminAuthenticated(req) {
+  // Valida assinatura e expiração antes de autorizar qualquer rota administrativa.
   const cookie = (req.headers.cookie || '').split(';').map(value => value.trim())
     .find(value => value.startsWith(`${ADMIN_COOKIE}=`));
   if (!cookie) return false;
@@ -72,7 +75,7 @@ module.exports = {
         .where('email', String(email).trim().toLowerCase())
         .first();
 
-      // Mesma mensagem para e-mail inexistente e senha errada (não revela qual deu erro).
+      // Usa a mesma resposta para evitar revelar se o e-mail está cadastrado.
       const senhaConfere = cliente ? await bcrypt.compare(String(senha), cliente.senha_hash) : false;
       if (!senhaConfere) {
         return res.status(401).json({ error: 'E-mail ou senha incorretos.' });
@@ -104,6 +107,7 @@ module.exports = {
       return res.status(503).json({ error: 'A autenticação administrativa ainda não foi configurada.' });
     }
 
+    // Compara credenciais em tempo constante e só cria cookie se tudo estiver configurado.
     const emailConfere = secureCompare(String(email || '').trim().toLowerCase(), configuredEmail.trim().toLowerCase());
     const senhaConfere = secureCompare(String(senha || ''), configuredPassword);
     if (!emailConfere || !senhaConfere) {

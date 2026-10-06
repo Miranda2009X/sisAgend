@@ -3,6 +3,7 @@ const erroInterno = require('../utils/erro');
 
 const STATUS_VALIDOS = ['Pendente', 'Confirmado', 'Concluido', 'Cancelado'];
 
+// Mantém o formato de data/hora local esperado pelo banco e pela agenda.
 const pad = value => String(value).padStart(2, '0');
 const formatDateTime = date =>
   `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
@@ -27,6 +28,7 @@ async function validarHorario({ id_profissional, id_servico, data_hora_inicio, i
 
   const data_hora_fim = formatDateTime(new Date(inicio.getTime() + duracao * 60000));
 
+  // Verifica sobreposição de intervalos, ignorando reservas já canceladas.
   const consulta = db('AGENDAMENTO')
     .where('id_profissional', id_profissional)
     .andWhere('status', '!=', 'Cancelado')
