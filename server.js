@@ -23,6 +23,12 @@ app.get('/', (req, res) => res.redirect('/cliente.html'));
 app.get('/profissionais.html', AuthController.requireAdminPage, (req, res) => {
   res.sendFile(path.join(__dirname, 'htmlTrabalho', 'profissionais.html'));
 });
+app.get('/catalogo-admin.html', AuthController.requireAdminPage, (req, res) => {
+  res.sendFile(path.join(__dirname, 'htmlTrabalho', 'catalogo-admin.html'));
+});
+app.get('/agendamento.html', AuthController.requireClientPage, (req, res) => {
+  res.sendFile(path.join(__dirname, 'htmlTrabalho', 'agendamento.html'));
+});
 app.use(express.static(path.join(__dirname, 'htmlTrabalho')));
 app.use(routes);
 
