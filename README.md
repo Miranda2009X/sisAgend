@@ -40,7 +40,7 @@ npx knex migrate:latest
 | POST   | `/login`                      | Autentica cliente por e-mail e senha     |
 | GET    | `/clientes`                   | Lista clientes                           |
 | POST   | `/profissionais`              | Cadastra profissional                    |
-| GET    | `/profissionais/escala`       | Escala do dia com agendamentos           |
+| GET    | `/profissionais/escala`       | Escala diária (`data=AAAA-MM-DD`) ou mensal (`mes=AAAA-MM`) |
 | GET    | `/servicos`                   | Lista serviços ativos                    |
 | POST   | `/agendamentos`               | Cria agendamento (valida conflito)       |
 | PUT    | `/agendamentos/:id/status`    | Muda status (cancelar exige justificativa) |

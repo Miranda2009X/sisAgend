@@ -69,27 +69,47 @@ routes.get('/profissionais/escala', AuthController.requireAdmin, async (req, res
   try {
     const hoje = new Date();
     const dataLocal = `${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, '0')}-${String(hoje.getDate()).padStart(2, '0')}`;
-    const data = req.query.data || dataLocal;
+    const consultaMensal = typeof req.query.mes === 'string';
+    const mes = consultaMensal ? req.query.mes : null;
+    const data = typeof req.query.data === 'string' ? req.query.data : dataLocal;
+    const inicioMes = mes && /^\d{4}-(0[1-9]|1[0-2])$/.test(mes)
+      ? `${mes}-01`
+      : null;
+    if (consultaMensal && !inicioMes) {
+      return res.status(400).json({ error: 'Informe um mês válido no formato AAAA-MM.' });
+    }
+    if (!consultaMensal && !/^\d{4}-\d{2}-\d{2}$/.test(data)) {
+      return res.status(400).json({ error: 'Informe uma data válida no formato AAAA-MM-DD.' });
+    }
+    const proximoMes = inicioMes
+      ? new Date(Date.UTC(Number(mes.slice(0, 4)), Number(mes.slice(5, 7)), 1)).toISOString().slice(0, 10)
+      : null;
     const [profissionais, agendamentos] = await Promise.all([
       db('PROFISSIONAL')
         .select('id_professional as id_profissional', 'nome', 'telefone', 'ativo')
         .orderBy('nome'),
-      db('AGENDAMENTO')
+      (() => {
+        const query = db('AGENDAMENTO')
         .join('CLIENTE', 'AGENDAMENTO.id_cliente', '=', 'CLIENTE.id_cliente')
         .join('PROFISSIONAL', 'AGENDAMENTO.id_profissional', '=', 'PROFISSIONAL.id_professional')
         .join('SERVICO', 'AGENDAMENTO.id_servico', '=', 'SERVICO.id_servico')
-        .whereLike('AGENDAMENTO.data_hora_inicio', `${data}%`)
         .select(
           'AGENDAMENTO.*',
           'CLIENTE.nome as cliente_nome',
           'PROFISSIONAL.nome as profissional_nome',
           'SERVICO.nome_servico'
         )
-        .orderBy('AGENDAMENTO.data_hora_inicio')
+        .orderBy('AGENDAMENTO.data_hora_inicio');
+        return inicioMes
+          ? query.where('AGENDAMENTO.data_hora_inicio', '>=', inicioMes)
+            .where('AGENDAMENTO.data_hora_inicio', '<', proximoMes)
+          : query.whereLike('AGENDAMENTO.data_hora_inicio', `${data}%`);
+      })()
     ]);
 
     return res.json({
       data,
+      ...(consultaMensal ? { mes } : {}),
       profissionais: profissionais.map(profissional => ({
         ...profissional,
         agendamentos: agendamentos.filter(
