@@ -20,8 +20,9 @@
       <nav class="nav" aria-label="Navegação principal">
         <a href="cliente.html#inicio">Início</a>
         <a href="servicos.html">Serviços</a>
-        <a href="cadastro.html">Cadastrar</a>
+        <a href="cadastro.html">Entrar / cadastrar</a>
         <a href="agendamento.html" aria-current="page">Agendamento</a>
+        <button class="button button-quiet" id="client-logout" type="button">Sair</button>
       </nav>
       <button class="menu-toggle" type="button" aria-label="Abrir menu" aria-expanded="false">☰</button>
     </header>
@@ -41,13 +42,8 @@
               <h2>Vamos reservar?</h2>
               <span class="status-dot" aria-label="Sistema online"></span>
             </div>
+            <p class="signed-in-client">Agendando como <strong id="signed-in-name">Carregando conta...</strong></p>
             <div class="form-grid">
-              <div class="field">
-                <label for="cliente_nome">Nome do cliente</label>
-                <input id="cliente_nome" type="text" list="clientes-lista" placeholder="Digite o nome do cliente" autocomplete="off" required>
-                <datalist id="clientes-lista"></datalist>
-                <input id="id_cliente" name="id_cliente" type="hidden">
-              </div>
               <div class="field">
                 <label for="id_profissional">Profissional</label>
                 <select id="id_profissional" name="id_profissional" required>
@@ -81,6 +77,17 @@
             <button class="button button-primary form-button" id="appointment-submit" type="submit" disabled>Confirmar agendamento <span aria-hidden="true">→</span></button>
             <div class="form-message" id="appointment-message" role="status" aria-live="polite"></div>
           </form>
+        </div>
+      </section>
+      <section class="section client-appointments-section">
+        <div class="shell">
+          <div class="section-heading">
+            <h2>Meus agendamentos</h2>
+            <p>Acompanhe as reservas feitas pela sua conta.</p>
+          </div>
+          <div class="client-appointments" id="client-appointments" aria-live="polite">
+            <p class="empty-state">Carregando seus agendamentos...</p>
+          </div>
         </div>
       </section>
     </main>
@@ -118,9 +125,8 @@
       const form = document.querySelector("#appointment-form");
       const message = document.querySelector("#appointment-message");
       const dateInput = document.querySelector("#data_agendamento");
-      const clientNameInput = document.querySelector("#cliente_nome");
-      const clientIdInput = document.querySelector("#id_cliente");
-      const clientsList = document.querySelector("#clientes-lista");
+      const signedInName = document.querySelector("#signed-in-name");
+      const clientAppointments = document.querySelector("#client-appointments");
       const startInput = document.querySelector("#data_hora_inicio");
       const professionalInput = document.querySelector("#id_profissional");
       const serviceInput = document.querySelector("#id_servico");
@@ -131,10 +137,10 @@
       const chooseAnotherTimeButton = document.querySelector("#choose-another-time");
       const continueCancelledTimeButton = document.querySelector("#continue-cancelled-time");
       const afterHoursDialog = document.querySelector("#after-hours-dialog");
+      const clientLogout = document.querySelector("#client-logout");
       const menuButton = document.querySelector(".menu-toggle");
       const nav = document.querySelector(".nav");
       let services = [];
-      let clients = [];
       let dailyAppointments = [];
       let cancellationWarningAccepted = false;
 
@@ -152,18 +158,6 @@
         message.className = "form-message";
         message.textContent = "";
         loadAvailability();
-      }
-
-      function updateClientId() {
-        const selectedClient = clients.find(client => client.nome.trim().toLowerCase() === clientNameInput.value.trim().toLowerCase());
-        clientIdInput.value = selectedClient ? selectedClient.id_cliente : "";
-        if (!selectedClient && clientNameInput.value) {
-          message.className = "form-message error";
-          message.textContent = "Selecione um cliente cadastrado ou digite o nome exatamente como aparece nas sugestões.";
-        } else {
-          message.className = "form-message";
-          message.textContent = "";
-        }
       }
 
       function minutesFromTime(value) {
@@ -223,7 +217,7 @@
           const occupiedDetail = occupiedBy ? `Ocupado até ${formatTime(occupiedBy.data_hora_fim)}` : "";
           const rowClass = [occupied || inPast ? "slot-unavailable" : "", previewBlocked ? "slot-preview" : "", selected ? "slot-selected" : "", hasCancelledHistory && !occupied && !inPast ? "slot-cancelled-history" : ""].filter(Boolean).join(" ");
           const slotStatus = inPast ? "Encerrado" : occupied ? "Ocupado" : selected ? "Início escolhido" : previewBlocked ? "Neste atendimento" : "Disponível";
-          const slotDetail = occupied ? occupiedDetail : hasCancelledHistory && !previewBlocked ? "Este horário já teve um agendamento cancelado." : previewBlocked ? `${selectedService.nome_servico} · ${formatDuration(duration)}` : "";
+          const slotDetail = occupied ? occupiedDetail : hasCancelledHistory && !previewBlocked ? "Este horário já teve um agendamento cancelado." : previewBlocked ? `${escapeHtml(selectedService.nome_servico)} · ${formatDuration(duration)}` : "";
           const slotAction = occupied || inPast || previewBlocked ? '<button class="slot-button slot-disabled" type="button" disabled>Bloqueado</button>' : selected ? '<span class="slot-locked">Selecionado</span>' : `<button class="slot-button" type="button" data-start="${start}">Selecionar</button>`;
           slots.push(`<tr class="${rowClass}"><td><strong>${hour}:${minute}</strong><small>até ${end.slice(-5)}</small></td><td><span class="slot-status">${slotStatus}</span>${slotDetail ? `<small class="slot-detail">${slotDetail}</small>` : ""}</td><td>${slotAction}</td></tr>`);
         }
@@ -265,28 +259,65 @@
 
       async function loadOptions() {
         try {
-          const [clientsResponse, servicesResponse, professionalsResponse] = await Promise.all([
-            fetch(`${apiUrl}/clientes`),
+          const [clientResponse, servicesResponse, professionalsResponse] = await Promise.all([
+            fetch(`${apiUrl}/clientes/me`),
             fetch(`${apiUrl}/servicos`),
             fetch(`${apiUrl}/profissionais`)
           ]);
-          if (!clientsResponse.ok || !servicesResponse.ok || !professionalsResponse.ok) throw new Error();
-          clients = await clientsResponse.json();
+          if (clientResponse.status === 401) {
+            window.location.replace(`/cadastro.html?next=${encodeURIComponent('/agendamento.html')}`);
+            return;
+          }
+          if (!clientResponse.ok || !servicesResponse.ok || !professionalsResponse.ok) throw new Error();
+          const client = await clientResponse.json();
+          signedInName.textContent = client.nome;
           services = await servicesResponse.json();
           const professionals = await professionalsResponse.json();
-          clientsList.innerHTML = clients.map(client => `<option value="${client.nome}"></option>`).join("");
           document.querySelector("#id_servico").innerHTML = services.length
-            ? services.map(service => `<option value="${service.id_servico}">${service.nome_servico} - ${service.duracao_minutos} min - R$ ${Number(service.preco).toFixed(2)}</option>`).join("")
+            ? services.map(service => `<option value="${service.id_servico}">${escapeHtml(service.nome_servico)} - ${Number(service.duracao_minutos)} min - R$ ${Number(service.preco).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</option>`).join("")
             : "<option value=\"\">Nenhum serviço disponível</option>";
-          document.querySelector("#id_profissional").innerHTML = professionals.length
-            ? professionals.map(professional => `<option value="${professional.id_profissional}">${professional.nome}</option>`).join("")
+          const activeProfessionals = professionals.filter(professional => professional.ativo);
+          document.querySelector("#id_profissional").innerHTML = activeProfessionals.length
+            ? activeProfessionals.map(professional => `<option value="${professional.id_profissional}">${escapeHtml(professional.nome)}</option>`).join("")
             : "<option value=\"\">Nenhum profissional disponível</option>";
+          const requestedService = new URLSearchParams(window.location.search).get("servico");
+          if (services.some(service => String(service.id_servico) === requestedService)) {
+            serviceInput.value = requestedService;
+          }
           loadAvailability();
+          loadClientAppointments();
         } catch (error) {
-          clientsList.innerHTML = "";
-          clientIdInput.value = "";
           document.querySelector("#id_servico").innerHTML = "<option value=\"\">Inicie o servidor para carregar</option>";
           document.querySelector("#id_profissional").innerHTML = "<option value=\"\">Inicie o servidor para carregar</option>";
+          signedInName.textContent = "Não foi possível carregar sua conta.";
+        }
+      }
+
+      function escapeHtml(value) {
+        return String(value).replace(/[&<>"']/g, character => ({
+          "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
+        })[character]);
+      }
+
+      async function loadClientAppointments() {
+        try {
+          const response = await fetch(`${apiUrl}/agendamentos/me`);
+          if (!response.ok) throw new Error();
+          const appointments = await response.json();
+          clientAppointments.innerHTML = appointments.length ? `
+            <div class="client-appointment-grid">
+              ${appointments.map(appointment => `
+                <article class="client-appointment-card">
+                  <span class="appointment-status status-${escapeHtml(appointment.status.toLowerCase())}">${escapeHtml(appointment.status)}</span>
+                  <h3>${escapeHtml(appointment.nome_servico)}</h3>
+                  <p>${escapeHtml(appointment.profissional_nome)}</p>
+                  <time datetime="${escapeHtml(appointment.data_hora_inicio)}">${new Date(appointment.data_hora_inicio).toLocaleString("pt-BR", { dateStyle: "long", timeStyle: "short" })}</time>
+                </article>
+              `).join("")}
+            </div>
+          ` : '<p class="empty-state">Você ainda não tem agendamentos.</p>';
+        } catch (error) {
+          clientAppointments.innerHTML = '<p class="empty-state">Não foi possível carregar seus agendamentos. Atualize a página e tente novamente.</p>';
         }
       }
 
@@ -301,18 +332,12 @@
         loadAvailability();
       }));
       dateInput.addEventListener("change", updateDate);
-      clientNameInput.addEventListener("input", updateClientId);
-      clientNameInput.addEventListener("change", updateClientId);
 
       form.addEventListener("submit", async (event) => {
         event.preventDefault();
         submitButton.disabled = true;
         message.className = "form-message";
         try {
-          updateClientId();
-          if (!clientIdInput.value) {
-            throw new Error("Selecione um cliente cadastrado.");
-          }
           if (!dateInput.value) {
             throw new Error("Digite uma data válida no formato dd/mm/aaaa, a partir de hoje.");
           }
@@ -339,14 +364,27 @@
           localStorage.setItem("sisagend:lastBookingDate", dateInput.value);
           form.reset();
           setMinimumDate();
-          clientIdInput.value = "";
           startInput.value = "";
           loadAvailability();
+          loadClientAppointments();
         } catch (error) {
           message.className = "form-message error";
           message.textContent = error.message.includes("Failed to fetch") ? "Inicie o servidor para fazer o agendamento." : error.message;
         } finally {
           submitButton.disabled = !startInput.value;
+        }
+      });
+
+      clientLogout.addEventListener("click", async () => {
+        clientLogout.disabled = true;
+        try {
+          const response = await fetch(`${apiUrl}/cliente/logout`, { method: "POST" });
+          if (!response.ok) throw new Error("Não foi possível sair da conta.");
+          window.location.assign("/cliente.html");
+        } catch (error) {
+          clientLogout.disabled = false;
+          message.className = "form-message error";
+          message.textContent = error.message;
         }
       });
 
@@ -382,7 +420,7 @@
       });
 
       nav.addEventListener("click", event => {
-        if (!event.target.closest("a") || !window.matchMedia("(max-width: 780px)").matches) return;
+        if (!event.target.closest("a, button") || !window.matchMedia("(max-width: 780px)").matches) return;
         menuButton.setAttribute("aria-expanded", "false");
         nav.removeAttribute("style");
       });
