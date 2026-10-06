@@ -12,11 +12,18 @@ const formatDateTime = date =>
 // Retorna { erro } quando algo é inválido, ou { data_hora_fim } quando está tudo certo.
 async function validarHorario({ id_profissional, id_servico, data_hora_inicio, ignorarAgendamento }) {
   const servico = await db('SERVICO')
-    .select('duracao_minutos')
+    .select('duracao_minutos', 'ativo')
     .where('id_servico', id_servico)
     .first();
 
   if (!servico) return { erro: 'Serviço não encontrado.' };
+  if (!servico.ativo) return { erro: 'Este serviço não está disponível para agendamento.' };
+
+  const profissional = await db('PROFISSIONAL')
+    .select('ativo')
+    .where('id_professional', id_profissional)
+    .first();
+  if (!profissional || !profissional.ativo) return { erro: 'Esta profissional não está disponível para agendamento.' };
 
   const inicio = new Date(data_hora_inicio);
   if (Number.isNaN(inicio.getTime())) return { erro: 'Data e horário inválidos.' };
@@ -48,7 +55,8 @@ async function validarHorario({ id_profissional, id_servico, data_hora_inicio, i
 module.exports = {
   async agendar(req, res) {
     try {
-      const { id_cliente, id_profissional, id_servico, data_hora_inicio } = req.body;
+      const { id_profissional, id_servico, data_hora_inicio } = req.body;
+      const id_cliente = req.client.id_cliente;
 
       const missingFields = [
         !id_cliente && 'cliente',
@@ -77,6 +85,9 @@ module.exports = {
   async listar(req, res) {
     try {
       const { data } = req.query;
+      if (typeof data !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(data)) {
+        return res.status(400).json({ error: 'Informe a data da agenda no formato AAAA-MM-DD.' });
+      }
       const query = db('AGENDAMENTO')
         .select(
           'id_profissional',
@@ -86,11 +97,31 @@ module.exports = {
           'status'
         );
 
-      if (data) {
-        query.whereLike('data_hora_inicio', `${data}%`);
-      }
+      query.whereLike('data_hora_inicio', `${data}%`);
 
       return res.json(await query);
+    } catch (error) {
+      return erroInterno(res, error);
+    }
+  },
+
+  async listarDoCliente(req, res) {
+    try {
+      const agendamentos = await db('AGENDAMENTO')
+        .join('SERVICO', 'AGENDAMENTO.id_servico', '=', 'SERVICO.id_servico')
+        .join('PROFISSIONAL', 'AGENDAMENTO.id_profissional', '=', 'PROFISSIONAL.id_professional')
+        .select(
+          'AGENDAMENTO.id_agendamento',
+          'AGENDAMENTO.data_hora_inicio',
+          'AGENDAMENTO.data_hora_fim',
+          'AGENDAMENTO.status',
+          'AGENDAMENTO.justificativa_cancelamento',
+          'SERVICO.nome_servico',
+          'PROFISSIONAL.nome as profissional_nome'
+        )
+        .where('AGENDAMENTO.id_cliente', req.client.id_cliente)
+        .orderBy('AGENDAMENTO.data_hora_inicio', 'desc');
+      return res.json(agendamentos);
     } catch (error) {
       return erroInterno(res, error);
     }
