@@ -20,7 +20,7 @@
       <nav class="nav" aria-label="Navegação principal">
         <a href="cliente.html">Início</a>
         <a href="servicos.html" aria-current="page">Serviços</a>
-        <a href="cadastro.html">Cadastrar</a>
+        <a href="cadastro.html">Entrar / cadastrar</a>
         <a href="agendamento.html">Agendamento</a>
       </nav>
       <button class="menu-toggle" type="button" aria-label="Abrir menu" aria-expanded="false">☰</button>
@@ -36,34 +36,8 @@
             </div>
             <p>Fotos de referência para tranças e cuidados capilares. Consulte as opções disponíveis ao agendar.</p>
           </div>
-          <div class="service-grid">
-            <figure class="service-card">
-              <img src="imagens/box-braids.jpg" alt="Sugestão de box braids longas com detalhes em miçangas." width="2512" height="2010" loading="lazy" decoding="async">
-              <figcaption>
-                <span class="feature-number">TRANÇAS</span>
-                <h2>Box braids</h2>
-                <p>Um visual versátil, com comprimento e acabamento que combinam com seu estilo.</p>
-                <small class="service-credit">Foto: <a href="https://commons.wikimedia.org/wiki/File:Box_Braids.jpg" target="_blank" rel="noreferrer">Randen Pederson / Wikimedia Commons</a> · <a href="https://creativecommons.org/licenses/by/2.0/" target="_blank" rel="noreferrer">CC BY 2.0</a></small>
-              </figcaption>
-            </figure>
-            <figure class="service-card">
-              <img src="https://upload.wikimedia.org/wikipedia/commons/6/66/Fine_Braids%2C_Dimma_%2813307706094%29.jpg" alt="Sugestão de tranças nagô desenhadas junto ao couro cabeludo." width="2008" height="2012" loading="lazy" decoding="async">
-              <figcaption>
-                <span class="feature-number">TRANÇAS</span>
-                <h2>Tranças nagô</h2>
-                <p>Linhas delicadas criam desenhos e valorizam diferentes formas de usar tranças.</p>
-                <small class="service-credit">Foto: <a href="https://commons.wikimedia.org/wiki/File:Fine_Braids,_Dimma_(13307706094).jpg" target="_blank" rel="noreferrer">Rod Waddington / Wikimedia Commons</a> · <a href="https://creativecommons.org/licenses/by-sa/2.0/" target="_blank" rel="noreferrer">CC BY-SA 2.0</a></small>
-              </figcaption>
-            </figure>
-            <figure class="service-card">
-              <img src="https://thumb.wikimedia.org/wikipedia/commons/thumb/9/9c/Hair_Oil_Treatment_at_Hair_Salon.jpg/960px-Hair_Oil_Treatment_at_Hair_Salon.jpg" alt="Profissional aplica óleo capilar durante um tratamento no salão." width="960" height="640" loading="lazy" decoding="async">
-              <figcaption>
-                <span class="feature-number">CUIDADOS</span>
-                <h2>Hidratação capilar</h2>
-                <p>Uma opção de cuidado para nutrir os fios e complementar seu momento de beleza.</p>
-                <small class="service-credit">Foto: <a href="https://geehair.com/" target="_blank" rel="noreferrer">Gee Hair Images</a> / <a href="https://commons.wikimedia.org/wiki/File:Hair_Oil_Treatment_at_Hair_Salon.jpg" target="_blank" rel="noreferrer">Wikimedia Commons</a> · <a href="https://creativecommons.org/licenses/by/2.0/" target="_blank" rel="noreferrer">CC BY 2.0</a></small>
-              </figcaption>
-            </figure>
+          <div class="service-grid" id="service-grid" aria-live="polite">
+            <p class="empty-state">Carregando serviços...</p>
           </div>
         </div>
       </section>
@@ -77,6 +51,51 @@
     </footer>
 
     <script>
+      const serviceGrid = document.querySelector("#service-grid");
+      const imageCredits = {
+        "/imagens/box-braids.jpg": '<small class="service-credit">Foto: <a href="https://commons.wikimedia.org/wiki/File:Box_Braids.jpg" target="_blank" rel="noreferrer">Randen Pederson / Wikimedia Commons</a> · <a href="https://creativecommons.org/licenses/by/2.0/" target="_blank" rel="noreferrer">CC BY 2.0</a></small>',
+        "https://upload.wikimedia.org/wikipedia/commons/6/66/Fine_Braids%2C_Dimma_%2813307706094%29.jpg": '<small class="service-credit">Foto: <a href="https://commons.wikimedia.org/wiki/File:Fine_Braids,_Dimma_(13307706094).jpg" target="_blank" rel="noreferrer">Rod Waddington / Wikimedia Commons</a> · <a href="https://creativecommons.org/licenses/by-sa/2.0/" target="_blank" rel="noreferrer">CC BY-SA 2.0</a></small>',
+        "https://thumb.wikimedia.org/wikipedia/commons/thumb/9/9c/Hair_Oil_Treatment_at_Hair_Salon.jpg/960px-Hair_Oil_Treatment_at_Hair_Salon.jpg": '<small class="service-credit">Foto: <a href="https://geehair.com/" target="_blank" rel="noreferrer">Gee Hair Images</a> / <a href="https://commons.wikimedia.org/wiki/File:Hair_Oil_Treatment_at_Hair_Salon.jpg" target="_blank" rel="noreferrer">Wikimedia Commons</a> · <a href="https://creativecommons.org/licenses/by/2.0/" target="_blank" rel="noreferrer">CC BY 2.0</a></small>'
+      };
+      const escapeHtml = value => String(value).replace(/[&<>"']/g, character => ({
+        "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
+      })[character]);
+
+      async function loadServices() {
+        try {
+          const response = await fetch(`${window.location.origin}/servicos`);
+          if (!response.ok) throw new Error("Não foi possível carregar o catálogo.");
+          const services = await response.json();
+          if (!services.length) {
+            serviceGrid.innerHTML = '<p class="empty-state">Nenhum serviço disponível no momento.</p>';
+            return;
+          }
+          serviceGrid.innerHTML = services.map(service => {
+            const name = escapeHtml(service.nome_servico);
+            const image = typeof service.imagem_url === "string" ? service.imagem_url : "";
+            const safeImage = image.startsWith("/") && !image.startsWith("//") || /^https?:\/\//i.test(image);
+            const imageMarkup = safeImage
+              ? `<img src="${escapeHtml(image)}" alt="Sugestão para ${name}" loading="lazy" decoding="async">`
+              : '<div class="service-image-placeholder" aria-hidden="true">NatiBraids</div>';
+            const description = service.descricao
+              ? `<p>${escapeHtml(service.descricao)}</p>`
+              : '<p>Consulte nossa equipe para saber mais sobre este serviço.</p>';
+            const credit = imageCredits[image] || "";
+            const price = Number(service.preco).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+            return `<figure class="service-card">${imageMarkup}<figcaption>
+              <span class="feature-number">${escapeHtml(service.nome_categoria || "SERVIÇO").toUpperCase()}</span>
+              <h2>${name}</h2>${description}
+              <p class="service-price">R$ ${price} · ${Number(service.duracao_minutos)} min</p>
+              ${credit}
+              <a class="service-book-link" href="/cadastro.html?next=${encodeURIComponent(`/agendamento.html?servico=${service.id_servico}`)}">Agendar este serviço <span aria-hidden="true">→</span></a>
+            </figcaption></figure>`;
+          }).join("");
+        } catch (error) {
+          serviceGrid.innerHTML = '<p class="empty-state">Não foi possível carregar os serviços. Atualize a página e tente novamente.</p>';
+        }
+      }
+
+      loadServices();
       const menuButton = document.querySelector(".menu-toggle");
       const nav = document.querySelector(".nav");
 
