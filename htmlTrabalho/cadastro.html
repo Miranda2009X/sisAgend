@@ -32,7 +32,7 @@
           <div class="appointment-intro">
             <span class="eyebrow">Seu próximo visual</span>
             <h1>Entre para agendar.</h1>
-            <p>Acesse sua conta ou crie seu cadastro para reservar e acompanhar seus horários.</p>
+            <p class="booking-notice" role="note">Para fazer um agendamento, é necessário ter uma conta. Entre ou crie seu cadastro para continuar.</p>
             <a class="back-link" href="cliente.html">← Voltar para NatiBraids</a>
           </div>
 
@@ -148,6 +148,10 @@
 
       registerTab.addEventListener("click", () => selectAccountTab(registerTab));
       loginTab.addEventListener("click", () => selectAccountTab(loginTab));
+
+      if (new URLSearchParams(window.location.search).has("next")) {
+        selectAccountTab(loginTab);
+      }
 
       function formatPhone(value) {
         const digits = value.replace(/\D/g, "").slice(0, 11);
