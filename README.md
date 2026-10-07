@@ -1,6 +1,6 @@
 # SISAGEND
 
-Sistema de agendamento para o salão NatiBraids.
+Sistema de agendamento para o salão Berenice Braids.
 
 - **Backend:** Node.js + Express 5 + Knex + SQLite
 - **Front-end:** HTML/CSS/JS puro em `htmlTrabalho/`, servido pelo próprio Express
