@@ -61,9 +61,10 @@
         "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
       })[character]);
 
+      // Busca sempre o catálogo atual para refletir cadastros feitos na administração.
       async function loadServices() {
         try {
-          const response = await fetch(`${window.location.origin}/servicos`);
+          const response = await fetch(`${window.location.origin}/servicos`, { cache: "no-store" });
           if (!response.ok) throw new Error("Não foi possível carregar o catálogo.");
           const services = await response.json();
           if (!services.length) {
@@ -96,6 +97,9 @@
       }
 
       loadServices();
+      document.addEventListener("visibilitychange", () => {
+        if (!document.hidden) loadServices();
+      });
       const menuButton = document.querySelector(".menu-toggle");
       const nav = document.querySelector(".nav");
 
