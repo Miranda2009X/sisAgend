@@ -4,7 +4,7 @@ const erroInterno = require('../utils/erro');
 module.exports = {
   async listar(req, res) {
     try {
-      // Inclui o nome da categoria e oculta serviços desativados do catálogo.
+      // O catálogo público só expõe serviços ativos; a administração mantém a lista completa.
       const servicos = await db('SERVICO')
         .join('CATEGORIA_SERVICO', 'SERVICO.id_categoria', '=', 'CATEGORIA_SERVICO.id_categoria')
         .select(
