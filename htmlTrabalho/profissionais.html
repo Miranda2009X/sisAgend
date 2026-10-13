@@ -22,6 +22,8 @@
         <a href="cadastro.html">Cadastrar</a>
         <a href="agendamento.html">Agendamento</a>
         <a href="/profissionais.html" aria-current="page">Profissionais</a>
+        <a href="/clientes-admin.html">Clientes</a>
+        <a href="/relatorios.html">Relatórios</a>
         <button class="button button-quiet" id="admin-logout" type="button">Sair</button>
       </nav>
       <button class="menu-toggle" type="button" aria-label="Abrir menu" aria-expanded="false">☰</button>
@@ -35,7 +37,7 @@
               <span class="eyebrow">Quem cuida de você</span>
               <h1>Profissionais.</h1>
             </div>
-            <p>Visualize os horários reservados por dia ou consulte a agenda do mês inteiro.<br><a class="back-link" href="/catalogo-admin.html">Gerenciar serviços, categorias e equipe →</a></p>
+            <p>Consulte os horários por dia, semana ou mês.<br><a class="back-link" href="/catalogo-admin.html">Gerenciar serviços, categorias e equipe →</a></p>
           </div>
 
           <div class="professionals-layout">
@@ -48,10 +50,11 @@
                 <div class="schedule-controls">
                   <div class="schedule-view-toggle" role="group" aria-label="Visualização da agenda">
                     <button class="schedule-view-button active" id="daily-view" type="button" aria-pressed="true">Dia</button>
+                    <button class="schedule-view-button" id="weekly-view" type="button" aria-pressed="false">Semana</button>
                     <button class="schedule-view-button" id="monthly-view" type="button" aria-pressed="false">Mês</button>
                   </div>
                   <button class="date-nav" id="previous-day" type="button" aria-label="Dia anterior" title="Dia anterior">←</button>
-                  <label class="date-filter" id="daily-date-filter" for="schedule-date">Data
+                  <label class="date-filter" id="daily-date-filter" for="schedule-date"><span id="daily-date-label">Data</span>
                     <input id="schedule-date" type="date">
                   </label>
                   <label class="date-filter" id="monthly-date-filter" for="schedule-month" hidden>Mês
@@ -118,6 +121,7 @@
       const scheduleMonth = document.querySelector("#schedule-month");
       const scheduleEyebrow = document.querySelector("#schedule-eyebrow");
       const dailyDateFilter = document.querySelector("#daily-date-filter");
+      const dailyDateLabel = document.querySelector("#daily-date-label");
       const monthlyDateFilter = document.querySelector("#monthly-date-filter");
       const scheduleTitle = document.querySelector("#schedule-title");
       const scheduleSummary = document.querySelector("#schedule-summary");
@@ -126,6 +130,7 @@
       const nextDay = document.querySelector("#next-day");
       const todayButton = document.querySelector("#today-button");
       const dailyViewButton = document.querySelector("#daily-view");
+      const weeklyViewButton = document.querySelector("#weekly-view");
       const monthlyViewButton = document.querySelector("#monthly-view");
       const menuButton = document.querySelector(".menu-toggle");
       const nav = document.querySelector(".nav");
@@ -164,7 +169,8 @@
         return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
       }
 
-      function renderProfessionals(professionals, data, monthly = false) {
+      function renderProfessionals(professionals, data, monthly = false, weeklyEnd = null) {
+        const weekly = scheduleView === "week";
         const totalAppointments = professionals.reduce((total, professional) => total + professional.agendamentos.length, 0);
         const activeProfessionals = professionals.filter(professional => professional.ativo).length;
         const confirmedAppointments = professionals.reduce((total, professional) => total + professional.agendamentos.filter(appointment => appointment.status === "Confirmado").length, 0);
@@ -179,20 +185,22 @@
         );
         scheduleTitle.textContent = monthly
           ? new Date(`${data}-01T12:00:00`).toLocaleDateString("pt-BR", { month: "long", year: "numeric" })
-          : new Date(`${data}T12:00:00`).toLocaleDateString("pt-BR", { day: "2-digit", month: "long" });
+          : weekly
+            ? `${new Date(`${data}T12:00:00`).toLocaleDateString("pt-BR", { day: "2-digit", month: "short" })}–${new Date(`${weeklyEnd}T12:00:00`).toLocaleDateString("pt-BR", { day: "2-digit", month: "short", year: "numeric" })}`
+            : new Date(`${data}T12:00:00`).toLocaleDateString("pt-BR", { day: "2-digit", month: "long" });
         scheduleMetrics.innerHTML = `
           <div class="metric"><span>Profissionais ativas</span><strong>${activeProfessionals}<small>/${professionals.length}</small></strong></div>
           <div class="metric"><span>Atendimentos</span><strong>${totalAppointments}</strong></div>
           <div class="metric"><span>Confirmados</span><strong>${confirmedAppointments}</strong></div>
         `;
         scheduleSummary.textContent = totalAppointments
-          ? monthly ? "Acompanhe os horários reservados ao longo deste mês." : "Acompanhe os horários reservados por profissional."
-          : monthly ? "A agenda está livre neste mês." : "A agenda está livre neste dia.";
+          ? monthly ? "Acompanhe os horários reservados ao longo deste mês." : weekly ? "Acompanhe os horários reservados ao longo desta semana." : "Acompanhe os horários reservados por profissional."
+          : monthly ? "A agenda está livre neste mês." : weekly ? "A agenda está livre nesta semana." : "A agenda está livre neste dia.";
         list.innerHTML = appointments.length ? `
-          <table class="schedule-table${monthly ? " monthly-schedule-table" : ""}">
+          <table class="schedule-table${monthly || weekly ? " monthly-schedule-table" : ""}">
             <thead>
               <tr>
-                ${monthly ? '<th scope="col">Data</th>' : ""}
+                ${monthly || weekly ? '<th scope="col">Data</th>' : ""}
                 <th scope="col">Horário</th>
                 <th scope="col">Profissional</th>
                 <th scope="col">Cliente</th>
@@ -204,7 +212,7 @@
             <tbody>
               ${appointments.map(appointment => `
                 <tr>
-                  ${monthly ? `<td>${new Date(appointment.data_hora_inicio).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" })}</td>` : ""}
+                  ${monthly || weekly ? `<td>${new Date(appointment.data_hora_inicio).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" })}</td>` : ""}
                   <td class="schedule-time">${formatTime(appointment.data_hora_inicio)}–${formatTime(appointment.data_hora_fim)}</td>
                   <td class="schedule-professional"><strong>${escapeHtml(appointment.profissional_nome)}</strong><small>${escapeHtml(appointment.profissional_telefone || "")}</small></td>
                   <td>${escapeHtml(appointment.cliente_nome)}</td>
@@ -219,7 +227,7 @@
               `).join("")}
             </tbody>
           </table>
-        ` : `<p class="empty-state table-empty">${professionals.length ? monthly ? "Nenhuma reserva para este mês." : "Nenhuma reserva para esta data." : "Nenhuma profissional cadastrada ainda."}</p>`;
+        ` : `<p class="empty-state table-empty">${professionals.length ? monthly ? "Nenhuma reserva para este mês." : weekly ? "Nenhuma reserva para esta semana." : "Nenhuma reserva para esta data." : "Nenhuma profissional cadastrada ainda."}</p>`;
         list.querySelectorAll(".appointment-action").forEach(button => {
           button.addEventListener("click", () => {
             if (button.dataset.reschedule) return openReschedule(button);
@@ -262,7 +270,7 @@
         rescheduleProfessionalId = Number(button.dataset.professional);
         rescheduleServiceDuration = Number(button.dataset.duration);
         rescheduleDate.min = formatDateInput();
-        rescheduleDate.value = scheduleView === "day" ? scheduleDate.value : formatDateInput();
+        rescheduleDate.value = scheduleView === "month" ? formatDateInput() : scheduleDate.value;
         rescheduleTime.innerHTML = '<option value="">Carregando horários...</option>';
         rescheduleDialog.showModal();
         loadRescheduleSlots();
@@ -338,13 +346,28 @@
 
       async function loadProfessionals() {
         try {
-          const period = scheduleView === "month"
-            ? `mes=${encodeURIComponent(scheduleMonth.value)}`
-            : `data=${encodeURIComponent(scheduleDate.value)}`;
-          const response = await fetch(`${apiUrl}/profissionais/escala?${period}&atualizado=${Date.now()}`, { cache: "no-store" });
+          const query = new URLSearchParams({ atualizado: String(Date.now()) });
+          if (scheduleView === "month") {
+            query.set("mes", scheduleMonth.value);
+          } else if (scheduleView === "week") {
+            // A semana começa na segunda-feira, independentemente do dia selecionado.
+            const [year, month, day] = scheduleDate.value.split("-").map(Number);
+            const selectedDate = new Date(year, month - 1, day);
+            const offset = (selectedDate.getDay() + 6) % 7;
+            query.set("inicio", formatDateInput(new Date(year, month - 1, day - offset)));
+            query.set("fim", formatDateInput(new Date(year, month - 1, day - offset + 6)));
+          } else {
+            query.set("data", scheduleDate.value);
+          }
+          const response = await fetch(`${apiUrl}/profissionais/escala?${query}`, { cache: "no-store" });
           if (!response.ok) throw new Error();
           const result = await response.json();
-          renderProfessionals(result.profissionais, scheduleView === "month" ? result.mes : result.data, scheduleView === "month");
+          renderProfessionals(
+            result.profissionais,
+            scheduleView === "month" ? result.mes : scheduleView === "week" ? result.inicio : result.data,
+            scheduleView === "month",
+            scheduleView === "week" ? result.fim : null
+          );
         } catch (error) {
           list.innerHTML = '<p class="empty-state">Não foi possível carregar a escala. Verifique a conexão e tente novamente.</p>';
         }
@@ -357,7 +380,8 @@
           scheduleMonth.value = `${changedMonth.getFullYear()}-${String(changedMonth.getMonth() + 1).padStart(2, "0")}`;
         } else {
           const [year, month, day] = scheduleDate.value.split("-").map(Number);
-          const changedDate = new Date(year, month - 1, day + amount);
+          const increment = scheduleView === "week" ? amount * 7 : amount;
+          const changedDate = new Date(year, month - 1, day + increment);
           scheduleDate.value = `${changedDate.getFullYear()}-${String(changedDate.getMonth() + 1).padStart(2, "0")}-${String(changedDate.getDate()).padStart(2, "0")}`;
         }
         loadProfessionals();
@@ -366,19 +390,23 @@
       function setScheduleView(view) {
         scheduleView = view;
         const monthly = view === "month";
-        dailyViewButton.classList.toggle("active", !monthly);
-        dailyViewButton.setAttribute("aria-pressed", String(!monthly));
+        const weekly = view === "week";
+        dailyViewButton.classList.toggle("active", !monthly && !weekly);
+        dailyViewButton.setAttribute("aria-pressed", String(!monthly && !weekly));
+        weeklyViewButton.classList.toggle("active", weekly);
+        weeklyViewButton.setAttribute("aria-pressed", String(weekly));
         monthlyViewButton.classList.toggle("active", monthly);
         monthlyViewButton.setAttribute("aria-pressed", String(monthly));
         dailyDateFilter.hidden = monthly;
         monthlyDateFilter.hidden = !monthly;
-        scheduleEyebrow.textContent = monthly ? "Escala mensal" : "Escala diária";
-        list.setAttribute("aria-label", monthly ? "Reservas do mês" : "Reservas do dia");
-        previousDay.setAttribute("aria-label", monthly ? "Mês anterior" : "Dia anterior");
-        previousDay.title = monthly ? "Mês anterior" : "Dia anterior";
-        nextDay.setAttribute("aria-label", monthly ? "Próximo mês" : "Próximo dia");
-        nextDay.title = monthly ? "Próximo mês" : "Próximo dia";
-        todayButton.textContent = monthly ? "Este mês" : "Hoje";
+        dailyDateLabel.textContent = weekly ? "Semana de" : "Data";
+        scheduleEyebrow.textContent = monthly ? "Escala mensal" : weekly ? "Escala semanal" : "Escala diária";
+        list.setAttribute("aria-label", monthly ? "Reservas do mês" : weekly ? "Reservas da semana" : "Reservas do dia");
+        previousDay.setAttribute("aria-label", monthly ? "Mês anterior" : weekly ? "Semana anterior" : "Dia anterior");
+        previousDay.title = monthly ? "Mês anterior" : weekly ? "Semana anterior" : "Dia anterior";
+        nextDay.setAttribute("aria-label", monthly ? "Próximo mês" : weekly ? "Próxima semana" : "Próximo dia");
+        nextDay.title = monthly ? "Próximo mês" : weekly ? "Próxima semana" : "Próximo dia";
+        todayButton.textContent = monthly ? "Este mês" : weekly ? "Esta semana" : "Hoje";
         loadProfessionals();
       }
 
@@ -408,6 +436,7 @@
       scheduleDate.addEventListener("change", loadProfessionals);
       scheduleMonth.addEventListener("change", loadProfessionals);
       dailyViewButton.addEventListener("click", () => setScheduleView("day"));
+      weeklyViewButton.addEventListener("click", () => setScheduleView("week"));
       monthlyViewButton.addEventListener("click", () => setScheduleView("month"));
       previousDay.addEventListener("click", () => changePeriod(-1));
       nextDay.addEventListener("click", () => changePeriod(1));
