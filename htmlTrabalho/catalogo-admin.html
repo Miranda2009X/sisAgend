@@ -19,6 +19,8 @@
       <nav class="nav" aria-label="Navegação administrativa">
         <a href="/profissionais.html">Agenda</a>
         <a href="/catalogo-admin.html" aria-current="page">Catálogo</a>
+        <a href="/clientes-admin.html">Clientes</a>
+        <a href="/relatorios.html">Relatórios</a>
         <button class="button button-quiet" id="admin-logout" type="button">Sair</button>
       </nav>
       <button class="menu-toggle" type="button" aria-label="Abrir menu" aria-expanded="false">☰</button>
@@ -133,6 +135,7 @@
             <button class="appointment-action" type="button" data-action="edit-category" data-id="${category.id_categoria}">Renomear</button>
           </article>`).join("") : '<p class="empty-state">Cadastre a primeira categoria.</p>';
 
+        // As especialidades selecionadas controlam em quais agendamentos a equipe aparece.
         professionalServices.innerHTML = catalog.servicos.length ? catalog.servicos.map(service => `
           <label class="catalog-service-option"><input type="checkbox" name="ids_servico" value="${service.id_servico}"> ${escapeHtml(service.nome_servico)}</label>
         `).join("") : '<p class="empty-state">Cadastre serviços antes de associá-los.</p>';
