@@ -26,12 +26,31 @@ app.get('/profissionais.html', AuthController.requireAdminPage, (req, res) => {
 app.get('/catalogo-admin.html', AuthController.requireAdminPage, (req, res) => {
   res.sendFile(path.join(__dirname, 'htmlTrabalho', 'catalogo-admin.html'));
 });
+app.get('/relatorios.html', AuthController.requireAdminPage, (req, res) => {
+  res.sendFile(path.join(__dirname, 'htmlTrabalho', 'relatorios.html'));
+});
+app.get('/clientes-admin.html', AuthController.requireAdminPage, (req, res) => {
+  res.sendFile(path.join(__dirname, 'htmlTrabalho', 'clientes-admin.html'));
+});
 app.get('/agendamento.html', AuthController.requireClientPage, (req, res) => {
   res.sendFile(path.join(__dirname, 'htmlTrabalho', 'agendamento.html'));
 });
 app.use(express.static(path.join(__dirname, 'htmlTrabalho')));
 app.use(routes);
 
-app.listen(PORT, () => {
-  console.log(`[SISAGEND] Servidor online em http://localhost:${PORT}`);
-});
+if (require.main === module) {
+  const database = require('./src/database/connection');
+  // Não aceita tráfego até as migrações garantirem que o esquema acompanha esta versão.
+  database.migrate.latest({ directory: path.join(__dirname, 'src/database/migrations') })
+    .then(() => {
+      app.listen(PORT, () => {
+        console.log(`[SISAGEND] Servidor online em http://localhost:${PORT}`);
+      });
+    })
+    .catch(error => {
+      console.error('[SISAGEND] Não foi possível preparar o banco de dados:', error);
+      database.destroy().finally(() => { process.exitCode = 1; });
+    });
+}
+
+module.exports = app;
