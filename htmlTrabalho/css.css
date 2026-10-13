@@ -92,6 +92,7 @@
       h1 { font-family: "Playfair Display", serif; font-size: clamp(48px, 7vw, 84px); letter-spacing: -.045em; line-height: .98; max-width: 680px; }
       .hero-copy { color: var(--ink-soft); font-size: 18px; margin: 26px 0 32px; max-width: 490px; }
       .hero-actions { align-items: center; display: flex; flex-wrap: wrap; gap: 14px; }
+      .booking-notice { background: #f3f1e9; border-left: 3px solid var(--coral); border-radius: 4px 9px 9px 4px; color: var(--ink); font-size: 14px; line-height: 1.5; margin: 18px 0 0; max-width: 490px; padding: 12px 14px; }
       .microcopy { color: var(--ink-soft); font-size: 12px; margin-top: 20px; }
       .hero-side { background: var(--paper); border: 1px solid rgba(18, 61, 66, .08); border-radius: 24px; box-shadow: var(--shadow); display: block; padding: clamp(26px, 4vw, 42px); transition: box-shadow .2s ease, transform .2s ease; }
       .hero-side:hover { box-shadow: 0 30px 70px rgba(18, 61, 66, .18); transform: translateY(-3px); }
