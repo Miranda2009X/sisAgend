@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#123d42">
+    <title>Clientes | Berenice Braids</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css.css">
+  </head>
+  <body>
+    <header class="shell topbar">
+      <a class="brand" href="cliente.html" aria-label="Berenice Braids início">
+        <span class="brand-mark">B</span><span>Berenice Braids</span>
+      </a>
+      <nav class="nav" aria-label="Navegação administrativa">
+        <a href="/profissionais.html">Agenda</a>
+        <a href="/catalogo-admin.html">Catálogo</a>
+        <a href="/clientes-admin.html" aria-current="page">Clientes</a>
+        <a href="/relatorios.html">Relatórios</a>
+        <button class="button button-quiet" id="admin-logout" type="button">Sair</button>
+      </nav>
+      <button class="menu-toggle" type="button" aria-label="Abrir menu" aria-expanded="false">☰</button>
+    </header>
+
+    <main>
+      <section class="section">
+        <div class="shell">
+          <div class="professionals-heading">
+            <div><span class="eyebrow">Área administrativa</span><h1>Clientes.</h1></div>
+            <p>Consulte e atualize os cadastros ativos.</p>
+          </div>
+          <div class="client-admin-toolbar">
+            <label for="client-search">Buscar cliente</label>
+            <input id="client-search" type="search" autocomplete="off" placeholder="Nome, e-mail ou telefone">
+          </div>
+          <p class="form-message" id="client-message" role="status" aria-live="polite"></p>
+          <div class="schedule-table-wrap" role="region" aria-label="Lista de clientes" tabindex="0">
+            <table class="schedule-table">
+              <thead>
+                <tr><th scope="col">Nome</th><th scope="col">Telefone</th><th scope="col">E-mail</th><th scope="col">Cadastro</th><th scope="col">Ações</th></tr>
+              </thead>
+              <tbody id="client-list"><tr><td colspan="5" class="empty-state">Carregando clientes...</td></tr></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <dialog class="cancellation-dialog" id="client-dialog">
+      <form id="client-form">
+        <h2>Editar cliente</h2>
+        <label for="client-name">Nome</label>
+        <input id="client-name" name="nome" maxlength="120" required>
+        <label for="client-phone">Telefone</label>
+        <input id="client-phone" name="telefone" type="tel" maxlength="30" required>
+        <label for="client-email">E-mail</label>
+        <input id="client-email" name="email" type="email" maxlength="254" required>
+        <label for="client-password">Nova senha (opcional)</label>
+        <input id="client-password" name="senha" type="password" minlength="6" autocomplete="new-password">
+        <div class="dialog-actions">
+          <button class="appointment-action" id="close-client-dialog" type="button">Voltar</button>
+          <button class="appointment-action confirm" type="submit">Salvar</button>
+        </div>
+      </form>
+    </dialog>
+
+    <footer class="shell footer">
+      <div class="footer-row"><small>© 2026 Berenice Braids. Área administrativa.</small><a href="/profissionais.html">Voltar à agenda</a></div>
+    </footer>
+
+    <script>
+      const clientList = document.querySelector("#client-list");
+      const clientSearch = document.querySelector("#client-search");
+      const clientMessage = document.querySelector("#client-message");
+      const clientDialog = document.querySelector("#client-dialog");
+      const clientForm = document.querySelector("#client-form");
+      const nav = document.querySelector(".nav");
+      const menuButton = document.querySelector(".menu-toggle");
+      let clients = [];
+      let editingClientId = null;
+
+      function escapeHtml(value) {
+        return String(value ?? "").replace(/[&<>"']/g, character => ({
+          "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
+        })[character]);
+      }
+
+      function showMessage(text, isError = false) {
+        clientMessage.className = `form-message ${isError ? "error" : "success"}`;
+        clientMessage.textContent = text;
+      }
+
+      async function request(url, options = {}) {
+        const response = await fetch(url, {
+          ...options,
+          headers: { ...(options.body ? { "Content-Type": "application/json" } : {}), ...options.headers }
+        });
+        if (response.status === 401) {
+          window.location.assign("/admin.html");
+          throw new Error("Sua sessão administrativa expirou.");
+        }
+        if (response.status === 204) return {};
+        const result = await response.json();
+        if (!response.ok) throw new Error(result.error || "Não foi possível concluir a operação.");
+        return result;
+      }
+
+      function renderClients() {
+        // A busca é local, mas usa apenas os cadastros ativos recebidos da API administrativa.
+        const query = clientSearch.value.trim().toLocaleLowerCase("pt-BR");
+        const filtered = clients.filter(client =>
+          [client.nome, client.email, client.telefone].some(value => String(value).toLocaleLowerCase("pt-BR").includes(query))
+        );
+        clientList.innerHTML = filtered.length ? filtered.map(client => `
+          <tr>
+            <td>${escapeHtml(client.nome)}</td>
+            <td>${escapeHtml(client.telefone)}</td>
+            <td>${escapeHtml(client.email)}</td>
+            <td>${client.data_cadastro ? new Date(client.data_cadastro).toLocaleDateString("pt-BR") : "—"}</td>
+            <td><div class="appointment-actions">
+              <button class="appointment-action" type="button" data-action="edit" data-id="${client.id_cliente}">Editar</button>
+              <button class="appointment-action cancel" type="button" data-action="deactivate" data-id="${client.id_cliente}">Desativar</button>
+            </div></td>
+          </tr>
+        `).join("") : '<tr><td colspan="5" class="empty-state">Nenhum cliente encontrado.</td></tr>';
+      }
+
+      async function loadClients() {
+        try {
+          clients = await request("/clientes", { cache: "no-store" });
+          renderClients();
+        } catch (error) {
+          clientList.innerHTML = '<tr><td colspan="5" class="empty-state">Não foi possível carregar os clientes.</td></tr>';
+          showMessage(error.message, true);
+        }
+      }
+
+      clientSearch.addEventListener("input", renderClients);
+      clientList.addEventListener("click", async event => {
+        const button = event.target.closest("button[data-action]");
+        if (!button) return;
+        const client = clients.find(item => Number(item.id_cliente) === Number(button.dataset.id));
+        if (!client) return;
+        if (button.dataset.action === "edit") {
+          editingClientId = client.id_cliente;
+          clientForm.elements.nome.value = client.nome;
+          clientForm.elements.telefone.value = client.telefone;
+          clientForm.elements.email.value = client.email;
+          clientForm.elements.senha.value = "";
+          clientDialog.showModal();
+          clientForm.elements.nome.focus();
+          return;
+        }
+        if (!window.confirm(`Desativar o cadastro de ${client.nome}? As reservas anteriores serão mantidas e anonimizadas.`)) return;
+        button.disabled = true;
+        try {
+          await request(`/clientes/${client.id_cliente}`, { method: "DELETE" });
+          showMessage("Cliente desativado; as reservas anteriores foram preservadas.");
+          await loadClients();
+        } catch (error) {
+          button.disabled = false;
+          showMessage(error.message, true);
+        }
+      });
+
+      clientForm.addEventListener("submit", async event => {
+        event.preventDefault();
+        if (!editingClientId || !clientForm.reportValidity()) return;
+        const data = new FormData(clientForm);
+        const body = { nome: data.get("nome"), telefone: data.get("telefone"), email: data.get("email") };
+        if (data.get("senha")) body.senha = data.get("senha");
+        const saveButton = clientForm.querySelector("button[type='submit']");
+        saveButton.disabled = true;
+        try {
+          await request(`/clientes/${editingClientId}`, { method: "PUT", body: JSON.stringify(body) });
+          clientDialog.close();
+          showMessage("Cadastro atualizado.");
+          await loadClients();
+        } catch (error) {
+          showMessage(error.message, true);
+        } finally {
+          saveButton.disabled = false;
+        }
+      });
+
+      document.querySelector("#close-client-dialog").addEventListener("click", () => clientDialog.close());
+      document.querySelector("#admin-logout").addEventListener("click", async () => {
+        await fetch("/admin/logout", { method: "POST" });
+        window.location.assign("/admin.html");
+      });
+      menuButton.addEventListener("click", () => {
+        const open = menuButton.getAttribute("aria-expanded") === "true";
+        menuButton.setAttribute("aria-expanded", String(!open));
+        nav.style.display = open ? "none" : "flex";
+        nav.style.flexDirection = "column";
+        nav.style.position = "absolute";
+        nav.style.right = "18px";
+        nav.style.top = "70px";
+        nav.style.background = "#fffdf8";
+        nav.style.padding = "18px";
+        nav.style.borderRadius = "12px";
+        nav.style.boxShadow = "0 12px 30px rgba(18, 61, 66, .14)";
+      });
+
+      loadClients();
+    </script>
+  </body>
+</html>
