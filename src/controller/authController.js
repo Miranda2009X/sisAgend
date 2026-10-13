@@ -96,8 +96,9 @@ async function requireClient(req, res, next) {
 
   try {
     const cliente = await db('CLIENTE')
-      .select('id_cliente', 'nome', 'email')
+      .select('id_cliente', 'nome', 'email', 'telefone')
       .where('id_cliente', Number(session.sub.slice('client:'.length)))
+      .where('ativo', true)
       .first();
     if (!cliente) return res.status(401).json({ error: 'A conta não está mais disponível. Entre novamente.' });
     req.client = cliente;
@@ -147,6 +148,7 @@ module.exports = {
 
       const cliente = await db('CLIENTE')
         .where('email', String(email).trim().toLowerCase())
+        .where('ativo', true)
         .first();
 
       // Usa a mesma resposta para evitar revelar se o e-mail está cadastrado.
@@ -161,7 +163,8 @@ module.exports = {
         cliente: {
           id_cliente: cliente.id_cliente,
           nome: cliente.nome,
-          email: cliente.email
+          email: cliente.email,
+          telefone: cliente.telefone
         }
       });
     } catch (error) {
@@ -196,15 +199,18 @@ module.exports = {
     const { email, senha } = req.body || {};
     const configuredEmail = process.env.ADMIN_EMAIL;
     const configuredPassword = process.env.ADMIN_PASSWORD;
+    const configuredPasswordHash = process.env.ADMIN_PASSWORD_HASH;
     const secret = getAdminSecret();
 
-    if (!configuredEmail || !configuredPassword || !secret) {
+    if (!configuredEmail || (!configuredPassword && !configuredPasswordHash) || !secret) {
       return res.status(503).json({ error: 'A autenticação administrativa ainda não foi configurada.' });
     }
 
-    // Compara credenciais em tempo constante e só cria cookie se tudo estiver configurado.
+    // Prefere bcrypt; mantém a comparação em tempo constante para senhas legadas em texto.
     const emailConfere = secureCompare(String(email || '').trim().toLowerCase(), configuredEmail.trim().toLowerCase());
-    const senhaConfere = secureCompare(String(senha || ''), configuredPassword);
+    const senhaConfere = configuredPasswordHash
+      ? await bcrypt.compare(String(senha || ''), configuredPasswordHash)
+      : secureCompare(String(senha || ''), configuredPassword);
     if (!emailConfere || !senhaConfere) {
       return res.status(401).json({ error: 'E-mail ou senha incorretos.' });
     }
