@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#123d42">
+    <title>Relatórios | Berenice Braids</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css.css">
+  </head>
+  <body>
+    <header class="shell topbar">
+      <a class="brand" href="cliente.html" aria-label="Berenice Braids início">
+        <span class="brand-mark">B</span><span>Berenice Braids</span>
+      </a>
+      <nav class="nav" aria-label="Navegação administrativa">
+        <a href="/profissionais.html">Agenda</a>
+        <a href="/catalogo-admin.html">Catálogo</a>
+        <a href="/clientes-admin.html">Clientes</a>
+        <a href="/relatorios.html" aria-current="page">Relatórios</a>
+        <button class="button button-quiet" id="admin-logout" type="button">Sair</button>
+      </nav>
+      <button class="menu-toggle" type="button" aria-label="Abrir menu" aria-expanded="false">☰</button>
+    </header>
+
+    <main>
+      <section class="section">
+        <div class="shell">
+          <div class="professionals-heading">
+            <div><span class="eyebrow">Desempenho do salão</span><h1>Relatórios.</h1></div>
+            <p>Atendimentos e faturamento por período.</p>
+          </div>
+
+          <form id="report-form" class="catalog-admin-form report-filters">
+            <label for="report-start">Início</label>
+            <input id="report-start" type="date" required>
+            <label for="report-end">Fim</label>
+            <input id="report-end" type="date" required>
+            <button class="button button-primary" type="submit">Atualizar</button>
+          </form>
+          <p class="form-message" id="report-message" role="status" aria-live="polite"></p>
+
+          <div id="report-results" hidden>
+            <div class="schedule-metrics report-metrics" id="report-metrics" aria-live="polite"></div>
+
+            <h2 class="report-section-title">Por dia</h2>
+            <div class="schedule-table-wrap">
+              <table class="schedule-table">
+                <thead><tr><th scope="col">Data</th><th scope="col">Atendimentos</th><th scope="col">Faturamento</th></tr></thead>
+                <tbody id="daily-report"></tbody>
+              </table>
+            </div>
+
+            <h2 class="report-section-title">Por serviço</h2>
+            <div class="schedule-table-wrap">
+              <table class="schedule-table">
+                <thead><tr><th scope="col">Serviço</th><th scope="col">Atendimentos</th><th scope="col">Faturamento</th></tr></thead>
+                <tbody id="service-report"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="shell footer">
+      <div class="footer-row"><small>© 2026 Berenice Braids. Área administrativa.</small><a href="/profissionais.html">Voltar à agenda</a></div>
+    </footer>
+
+    <script>
+      const form = document.querySelector("#report-form");
+      const startInput = document.querySelector("#report-start");
+      const endInput = document.querySelector("#report-end");
+      const message = document.querySelector("#report-message");
+      const results = document.querySelector("#report-results");
+      const metrics = document.querySelector("#report-metrics");
+      const dailyReport = document.querySelector("#daily-report");
+      const serviceReport = document.querySelector("#service-report");
+      const nav = document.querySelector(".nav");
+      const menuButton = document.querySelector(".menu-toggle");
+
+      function escapeHtml(value) {
+        return String(value).replace(/[&<>"']/g, character => ({
+          "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
+        })[character]);
+      }
+
+      function formatCurrency(value) {
+        return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(Number(value) || 0);
+      }
+
+      function formatDate(value) {
+        return new Date(`${value}T12:00:00`).toLocaleDateString("pt-BR");
+      }
+
+      function showMessage(text, isError = false) {
+        message.className = `form-message ${isError ? "error" : "success"}`;
+        message.textContent = text;
+      }
+
+      function renderReport(report) {
+        // O faturamento enviado pela API considera somente serviços concluídos no período.
+        const summary = report.resumo;
+        metrics.innerHTML = `
+          <div class="metric"><span>Atendimentos</span><strong>${summary.total_atendimentos}</strong></div>
+          <div class="metric"><span>Concluídos</span><strong>${summary.concluidos}</strong></div>
+          <div class="metric"><span>Cancelados</span><strong>${summary.cancelados}</strong></div>
+          <div class="metric"><span>Faturamento concluído</span><strong>${formatCurrency(summary.faturamento)}</strong></div>
+        `;
+        dailyReport.innerHTML = report.por_dia.length ? report.por_dia.map(item => `
+          <tr><td>${formatDate(item.data)}</td><td>${item.total_atendimentos}</td><td>${formatCurrency(item.faturamento)}</td></tr>
+        `).join("") : '<tr><td colspan="3" class="empty-state">Nenhum atendimento no período.</td></tr>';
+        serviceReport.innerHTML = report.por_servico.length ? report.por_servico.map(item => `
+          <tr><td>${escapeHtml(item.nome_servico || "Serviço removido")}</td><td>${item.total_atendimentos}</td><td>${formatCurrency(item.faturamento)}</td></tr>
+        `).join("") : '<tr><td colspan="3" class="empty-state">Nenhum atendimento no período.</td></tr>';
+        results.hidden = false;
+      }
+
+      async function loadReport(event) {
+        event?.preventDefault();
+        if (!form.reportValidity()) return;
+        const submitButton = form.querySelector("button[type='submit']");
+        submitButton.disabled = true;
+        message.className = "form-message";
+        message.textContent = "";
+        try {
+          const query = new URLSearchParams({ inicio: startInput.value, fim: endInput.value });
+          const response = await fetch(`/admin/relatorios?${query}`, { cache: "no-store" });
+          const report = await response.json();
+          if (response.status === 401) {
+            window.location.assign("/admin.html");
+            return;
+          }
+          if (!response.ok) throw new Error(report.error || "Não foi possível carregar o relatório.");
+          renderReport(report);
+        } catch (error) {
+          showMessage(error.message, true);
+        } finally {
+          submitButton.disabled = false;
+        }
+      }
+
+      const today = new Date();
+      const pad = value => String(value).padStart(2, "0");
+      const todayValue = `${today.getFullYear()}-${pad(today.getMonth() + 1)}-${pad(today.getDate())}`;
+      startInput.value = `${today.getFullYear()}-${pad(today.getMonth() + 1)}-01`;
+      endInput.value = todayValue;
+      startInput.max = todayValue;
+      endInput.max = todayValue;
+      startInput.addEventListener("change", () => { endInput.min = startInput.value; });
+      endInput.addEventListener("change", () => { startInput.max = endInput.value; });
+      form.addEventListener("submit", loadReport);
+      loadReport();
+
+      document.querySelector("#admin-logout").addEventListener("click", async () => {
+        await fetch("/admin/logout", { method: "POST" });
+        window.location.assign("/admin.html");
+      });
+      menuButton.addEventListener("click", () => {
+        const open = menuButton.getAttribute("aria-expanded") === "true";
+        menuButton.setAttribute("aria-expanded", String(!open));
+        nav.style.display = open ? "none" : "flex";
+        nav.style.flexDirection = "column";
+        nav.style.position = "absolute";
+        nav.style.right = "18px";
+        nav.style.top = "70px";
+        nav.style.background = "#fffdf8";
+        nav.style.padding = "18px";
+        nav.style.borderRadius = "12px";
+        nav.style.boxShadow = "0 12px 30px rgba(18, 61, 66, .14)";
+      });
+    </script>
+  </body>
+</html>
