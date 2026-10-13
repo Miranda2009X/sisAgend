@@ -1,11 +1,11 @@
 const knex = require('knex');
 const path = require('path');
 
-// Compartilha uma única conexão SQLite entre os controllers e as rotas.
+// Compartilha o pool SQLite e permite apontar testes para um banco isolado.
 const connection = knex({
   client: 'sqlite3',
   connection: {
-    filename: path.join(__dirname, 'database.sqlite')
+    filename: process.env.SISAGEND_DB_PATH || path.join(__dirname, 'database.sqlite')
   },
   useNullAsDefault: true
 });
