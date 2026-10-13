@@ -8,7 +8,20 @@ const ServicoController = require('./controller/servicoController');
 const AgendamentoController = require('./controller/agendamentoController');
 const AuthController = require('./controller/authController');
 const CatalogController = require('./controller/catalogController');
+const RelatorioController = require('./controller/relatorioController');
 const erroInterno = require('./utils/erro');
+
+function dataCalendarioValida(value) {
+  if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+  const [year, month, day] = value.split('-').map(Number);
+  const date = new Date(Date.UTC(year, month - 1, day));
+  return date.getUTCFullYear() === year && date.getUTCMonth() === month - 1 && date.getUTCDate() === day;
+}
+
+function somarDias(value, amount) {
+  const [year, month, day] = value.split('-').map(Number);
+  return new Date(Date.UTC(year, month - 1, day + amount)).toISOString().slice(0, 10);
+}
 
 // Cria a conta já armazenando a senha em formato de hash, nunca em texto puro.
 routes.post('/clientes', async (req, res) => {
@@ -41,6 +54,7 @@ routes.get('/clientes/me', AuthController.requireClient, (req, res) => res.json(
 
 // Alterações no catálogo e nos profissionais exigem sessão administrativa.
 routes.get('/admin/catalogo', AuthController.requireAdmin, CatalogController.listAdmin);
+routes.get('/admin/relatorios', AuthController.requireAdmin, RelatorioController.listar);
 routes.post('/profissionais', AuthController.requireAdmin, CatalogController.createProfessional);
 routes.put('/profissionais/:id', AuthController.requireAdmin, CatalogController.updateProfessional);
 routes.post('/categorias', AuthController.requireAdmin, CatalogController.createCategory);
@@ -50,27 +64,40 @@ routes.put('/servicos/:id', AuthController.requireAdmin, CatalogController.updat
 
 routes.post('/login', AuthController.login);
 routes.get('/clientes', AuthController.requireAdmin, ClienteController.listar);
+routes.put('/clientes/me', AuthController.requireClient, ClienteController.atualizarMinhaConta);
+routes.put('/clientes/:id', AuthController.requireAdmin, ClienteController.atualizar);
+routes.delete('/clientes/:id', AuthController.requireAdmin, ClienteController.desativar);
 
-// Retorna a escala do dia ou de um mês; a validação evita filtros de data ambíguos.
+// Períodos semanal e mensal usam intervalos semiabertos para cobrir todos os dias selecionados.
 routes.get('/profissionais/escala', AuthController.requireAdmin, async (req, res) => {
   try {
     const hoje = new Date();
     const dataLocal = `${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, '0')}-${String(hoje.getDate()).padStart(2, '0')}`;
     const consultaMensal = typeof req.query.mes === 'string';
+    const consultaSemanal = typeof req.query.inicio === 'string' || typeof req.query.fim === 'string';
     const mes = consultaMensal ? req.query.mes : null;
     const data = typeof req.query.data === 'string' ? req.query.data : dataLocal;
+    const inicioSemana = typeof req.query.inicio === 'string' ? req.query.inicio : null;
+    const fimSemana = typeof req.query.fim === 'string' ? req.query.fim : null;
     const inicioMes = mes && /^\d{4}-(0[1-9]|1[0-2])$/.test(mes)
       ? `${mes}-01`
       : null;
+    if (consultaMensal && consultaSemanal) {
+      return res.status(400).json({ error: 'Escolha uma única visualização da escala.' });
+    }
     if (consultaMensal && !inicioMes) {
       return res.status(400).json({ error: 'Informe um mês válido no formato AAAA-MM.' });
     }
-    if (!consultaMensal && !/^\d{4}-\d{2}-\d{2}$/.test(data)) {
+    if (consultaSemanal && (!dataCalendarioValida(inicioSemana) || !dataCalendarioValida(fimSemana) || somarDias(inicioSemana, 6) !== fimSemana)) {
+      return res.status(400).json({ error: 'Informe o início e o fim de uma semana válida.' });
+    }
+    if (!consultaMensal && !consultaSemanal && !dataCalendarioValida(data)) {
       return res.status(400).json({ error: 'Informe uma data válida no formato AAAA-MM-DD.' });
     }
     const proximoMes = inicioMes
       ? new Date(Date.UTC(Number(mes.slice(0, 4)), Number(mes.slice(5, 7)), 1)).toISOString().slice(0, 10)
       : null;
+    const proximoDia = consultaSemanal ? somarDias(fimSemana, 1) : null;
 
     // Busca a equipe e os agendamentos em paralelo; para o mês, usa intervalo semiaberto.
     const [profissionais, agendamentos] = await Promise.all([
@@ -90,16 +117,22 @@ routes.get('/profissionais/escala', AuthController.requireAdmin, async (req, res
           'SERVICO.duracao_minutos'
         )
         .orderBy('AGENDAMENTO.data_hora_inicio');
-        return inicioMes
-          ? query.where('AGENDAMENTO.data_hora_inicio', '>=', inicioMes)
-            .where('AGENDAMENTO.data_hora_inicio', '<', proximoMes)
-          : query.whereLike('AGENDAMENTO.data_hora_inicio', `${data}%`);
+        if (inicioMes) {
+          return query.where('AGENDAMENTO.data_hora_inicio', '>=', inicioMes)
+            .where('AGENDAMENTO.data_hora_inicio', '<', proximoMes);
+        }
+        if (consultaSemanal) {
+          return query.where('AGENDAMENTO.data_hora_inicio', '>=', inicioSemana)
+            .where('AGENDAMENTO.data_hora_inicio', '<', proximoDia);
+        }
+        return query.whereLike('AGENDAMENTO.data_hora_inicio', `${data}%`);
       })()
     ]);
 
     return res.json({
       data,
       ...(consultaMensal ? { mes } : {}),
+      ...(consultaSemanal ? { inicio: inicioSemana, fim: fimSemana } : {}),
       // Agrupa cada agendamento junto ao profissional correspondente.
       profissionais: profissionais.map(profissional => ({
         ...profissional,
@@ -114,10 +147,22 @@ routes.get('/profissionais/escala', AuthController.requireAdmin, async (req, res
 });
 routes.get('/profissionais', async (req, res) => {
   try {
-    const profissionais = await db('PROFISSIONAL')
-      .select('id_professional as id_profissional', 'nome', 'ativo')
-      .orderBy('nome');
-    return res.json(profissionais);
+    const [profissionais, associacoes] = await Promise.all([
+      db('PROFISSIONAL')
+        .select('id_professional as id_profissional', 'nome', 'ativo')
+        .orderBy('nome'),
+      db('PROFISSIONAL_SERVICO').select('id_profissional', 'id_servico')
+    ]);
+    const servicosPorProfissional = new Map();
+    associacoes.forEach(({ id_profissional, id_servico }) => {
+      const ids = servicosPorProfissional.get(id_profissional) || [];
+      ids.push(id_servico);
+      servicosPorProfissional.set(id_profissional, ids);
+    });
+    return res.json(profissionais.map(profissional => ({
+      ...profissional,
+      ids_servico: servicosPorProfissional.get(profissional.id_profissional) || []
+    })));
   } catch (error) {
     return erroInterno(res, error);
   }
@@ -127,7 +172,11 @@ routes.get('/servicos', ServicoController.listar);
 // Operações de agenda; alterações de status e reagendamentos são administrativas.
 routes.post('/agendamentos', AuthController.requireClient, AgendamentoController.agendar);
 routes.get('/agendamentos/me', AuthController.requireClient, AgendamentoController.listarDoCliente);
-routes.get('/agendamentos', AuthController.requireClient, AgendamentoController.listar);
+routes.get('/agendamentos/disponibilidade', AuthController.requireClient, AgendamentoController.disponibilidade);
+// As ações do cliente ficam restritas às reservas da sessão; a agenda completa é só administrativa.
+routes.put('/agendamentos/me/:id/cancelar', AuthController.requireClient, AgendamentoController.cancelarDoCliente);
+routes.put('/agendamentos/me/:id/reagendar', AuthController.requireClient, AgendamentoController.reagendarDoCliente);
+routes.get('/agendamentos', AuthController.requireAdmin, AgendamentoController.listar);
 routes.put('/agendamentos/:id/status', AuthController.requireAdmin, AgendamentoController.atualizarStatus);
 routes.put('/agendamentos/:id/reagendar', AuthController.requireAdmin, AgendamentoController.reagendar);
 
