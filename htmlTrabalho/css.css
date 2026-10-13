@@ -225,6 +225,11 @@
       .date-filter input { min-width: 145px; padding: 10px 11px; }
       .date-filter[hidden] { display: none; }
       .schedule-metrics { display: grid; gap: 12px; grid-template-columns: repeat(3, 1fr); margin: 26px 0 14px; }
+      /* Mantém filtros e indicadores legíveis em telas estreitas. */
+      .report-metrics { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+      .report-section-title { font-size: 28px; margin: 34px 0 16px; }
+      .report-filters { align-items: end; grid-template-columns: repeat(5, minmax(0, 1fr)); margin: 30px 0 0; }
+      .client-admin-toolbar { margin: 30px 0 14px; max-width: 420px; }
       .metric { background: var(--paper); border: 1px solid rgba(18, 61, 66, .08); border-radius: 12px; padding: 15px 17px; }
       .metric span { color: var(--ink-soft); display: block; font-size: 11px; font-weight: 700; text-transform: uppercase; }
       .metric strong { display: block; font-family: "Playfair Display", serif; font-size: 28px; line-height: 1; margin-top: 8px; }
@@ -330,6 +335,9 @@
         .schedule-controls { flex-wrap: wrap; }
         .today-button { flex: 1; }
         .schedule-metrics { gap: 8px; }
+        .report-metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+        .report-filters { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+        .report-filters button { grid-column: 1 / -1; }
         .catalog-admin-panel { padding: 17px; }
         .catalog-service-form { grid-template-columns: 1fr; }
         .catalog-service-form .button { grid-column: auto; }
