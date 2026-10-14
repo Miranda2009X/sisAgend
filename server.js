@@ -18,6 +18,9 @@ const PORT = Number(process.env.SISAGEND_PORT) || 3001;
 app.use(cors());
 app.use(express.json());
 app.get('/', (req, res) => res.redirect('/cliente.html'));
+app.get('/admin.html', AuthController.redirectAuthenticatedAdmin, (req, res) => {
+  res.sendFile(path.join(__dirname, 'htmlTrabalho', 'admin.html'));
+});
 
 // Protege a página administrativa antes de disponibilizar os arquivos estáticos.
 app.get('/profissionais.html', AuthController.requireAdminPage, (req, res) => {
