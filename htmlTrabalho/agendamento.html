@@ -44,18 +44,19 @@
             </div>
             <p class="signed-in-client">Agendando como <strong id="signed-in-name">Carregando conta...</strong></p>
             <div class="form-grid">
-              <div class="field">
-                <label for="id_profissional">Profissional</label>
-                <select id="id_profissional" name="id_profissional" required>
-                  <option value="">Carregando profissionais...</option>
-                </select>
-              </div>
               <div class="field full">
                 <label for="id_servico">Serviço</label>
                 <select id="id_servico" name="id_servico" required>
                   <option value="">Carregando serviços...</option>
                 </select>
               </div>
+              <div class="field">
+                <label for="id_profissional">Profissional</label>
+                <select id="id_profissional" name="id_profissional" required>
+                  <option value="">Selecione um serviço primeiro</option>
+                </select>
+              </div>
+              <p class="booking-notice field full">A lista de profissionais mostra apenas quem realiza o serviço selecionado.</p>
               <div class="field full">
                 <label for="data_agendamento">Data</label>
                 <input id="data_agendamento" type="date" required>
@@ -317,12 +318,16 @@
       function updateProfessionalOptions() {
         const selectedId = professionalInput.value;
         const serviceId = Number(serviceInput.value);
-        const eligible = professionals.filter(professional =>
-          professional.ativo && (!professional.ids_servico.length || professional.ids_servico.includes(serviceId))
-        );
+        const eligible = professionals.filter(professional => {
+          const serviceIds = Array.isArray(professional.ids_servico)
+            ? professional.ids_servico.map(Number)
+            : [];
+          return Boolean(professional.ativo)
+            && (!serviceIds.length || serviceIds.includes(serviceId));
+        });
         professionalInput.innerHTML = eligible.length
           ? eligible.map(professional => `<option value="${professional.id_profissional}">${escapeHtml(professional.nome)}</option>`).join("")
-          : '<option value="">Nenhuma profissional disponível para este serviço</option>';
+          : '<option value="">Nenhuma profissional associada a este serviço. Confira as especialidades no painel administrativo.</option>';
         professionalInput.value = eligible.some(professional => String(professional.id_profissional) === selectedId)
           ? selectedId
           : String(eligible[0]?.id_profissional || "");

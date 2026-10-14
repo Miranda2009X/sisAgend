@@ -1,6 +1,8 @@
 const assert = require('node:assert/strict');
 const bcrypt = require('bcrypt');
+const crypto = require('node:crypto');
 const fs = require('node:fs');
+const http = require('node:http');
 const os = require('node:os');
 const path = require('node:path');
 const knexFactory = require('knex');
@@ -85,25 +87,108 @@ test('documented client and admin workflows preserve privacy and history', async
     });
     const baseUrl = `http://127.0.0.1:${server.address().port}`;
     const call = (route, options) => fetch(`${baseUrl}${route}`, options);
+    const callRaw = (route, headers = {}) => new Promise((resolve, reject) => {
+      const request = http.request({
+        hostname: '127.0.0.1',
+        port: server.address().port,
+        path: route,
+        headers
+      }, response => {
+        response.resume();
+        response.on('end', () => resolve({ status: response.statusCode, headers: response.headers }));
+      });
+      request.on('error', reject);
+      request.end();
+    });
+    const sessionClaims = (setCookie, cookieName) => {
+      const token = setCookie.split(';', 1)[0].slice(cookieName.length + 1);
+      const [payload] = token.split('.');
+      return JSON.parse(Buffer.from(payload, 'base64url').toString());
+    };
+    const sessionExpiry = (setCookie, cookieName) => sessionClaims(setCookie, cookieName).exp;
     const clientLogin = await call('/login', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email: 'cliente@example.test', senha: 'cliente123' })
     });
     assert.equal(clientLogin.status, 200);
-    const clientCookie = clientLogin.headers.get('set-cookie').split(';', 1)[0];
+    const clientSetCookie = clientLogin.headers.get('set-cookie');
+    assert.match(clientSetCookie, /HttpOnly/);
+    assert.match(clientSetCookie, /SameSite=Lax/);
+    assert.match(clientSetCookie, /Max-Age=28800/);
+    const clientCookie = clientSetCookie.split(';', 1)[0];
     const adminLogin = await call('/admin/login', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email: process.env.ADMIN_EMAIL, senha: process.env.ADMIN_PASSWORD })
     });
     assert.equal(adminLogin.status, 200);
-    const adminCookie = adminLogin.headers.get('set-cookie').split(';', 1)[0];
+    const adminSetCookie = adminLogin.headers.get('set-cookie');
+    assert.match(adminSetCookie, /HttpOnly/);
+    assert.match(adminSetCookie, /SameSite=Lax/);
+    assert.doesNotMatch(adminSetCookie, /(?:Max-Age|Expires)=/i);
+    const adminCookie = adminSetCookie.split(';', 1)[0];
+    const adminClaims = sessionClaims(adminSetCookie, 'sisagend_admin');
+    assert.ok(Number.isInteger(adminClaims.iat));
+    assert.equal(adminClaims.exp - adminClaims.iat, 30 * 60);
+    const loginExpiry = sessionExpiry(adminSetCookie, 'sisagend_admin');
+    assert.ok(loginExpiry > Math.floor(Date.now() / 1000) + 29 * 60);
+    assert.ok(loginExpiry <= Math.floor(Date.now() / 1000) + 30 * 60);
+    await new Promise(resolve => setTimeout(resolve, 1100));
+    const adminActivity = await call('/profissionais/escala?data=2099-04-05', {
+      headers: { Cookie: adminCookie }
+    });
+    assert.equal(adminActivity.status, 200);
+    const refreshedAdminCookie = adminActivity.headers.get('set-cookie');
+    assert.ok(sessionExpiry(refreshedAdminCookie, 'sisagend_admin') > loginExpiry);
+    assert.doesNotMatch(refreshedAdminCookie, /(?:Max-Age|Expires)=/i);
+
+    const publicProfessionalsResponse = await call('/profissionais');
+    assert.equal(publicProfessionalsResponse.status, 200);
+    const publicProfessionals = await publicProfessionalsResponse.json();
+    const listedProfessional = publicProfessionals.find(item => item.id_profissional === professionalId);
+    assert.ok(listedProfessional);
+    assert.deepEqual(listedProfessional.ids_servico, [serviceId]);
+
+    const expiredPayload = Buffer.from(JSON.stringify({
+      sub: 'admin',
+      exp: Math.floor(Date.now() / 1000) - 1
+    })).toString('base64url');
+    const expiredSignature = crypto.createHmac('sha256', process.env.JWT_SECRET)
+      .update(expiredPayload)
+      .digest('base64url');
+    const expiredAdminRequest = await call('/profissionais/escala?data=2099-04-05', {
+      headers: { Cookie: `sisagend_admin=${expiredPayload}.${expiredSignature}` }
+    });
+    assert.equal(expiredAdminRequest.status, 401);
+
+    const legacyPayload = Buffer.from(JSON.stringify({
+      sub: 'admin',
+      exp: Math.floor(Date.now() / 1000) + 8 * 60 * 60
+    })).toString('base64url');
+    const legacySignature = crypto.createHmac('sha256', process.env.JWT_SECRET)
+      .update(legacyPayload)
+      .digest('base64url');
+    const legacyAdminRequest = await call('/profissionais/escala?data=2099-04-05', {
+      headers: { Cookie: `sisagend_admin=${legacyPayload}.${legacySignature}` }
+    });
+    assert.equal(legacyAdminRequest.status, 401);
+
     const adminLoginPage = await call('/admin.html', { headers: { Cookie: adminCookie }, redirect: 'manual' });
     assert.equal(adminLoginPage.status, 302);
     assert.equal(adminLoginPage.headers.get('location'), '/profissionais.html');
     const anonymousAdminLoginPage = await call('/admin.html');
     assert.equal(anonymousAdminLoginPage.status, 200);
+    for (const page of ['profissionais.html', 'catalogo-admin.html', 'relatorios.html', 'clientes-admin.html']) {
+      for (const alias of [`/x/../${page}`, `/x/%2e%2e/${page}`]) {
+        const anonymousPage = await callRaw(alias);
+        assert.equal(anonymousPage.status, 302, `${alias} should require an admin session`);
+        assert.equal(anonymousPage.headers.location, '/admin.html');
+
+        const authenticatedPage = await callRaw(alias, { Cookie: adminCookie });
+        assert.equal(authenticatedPage.status, 200, `${alias} should remain available to an admin`);
+      }
+    }
 
     const rawSchedule = await call('/agendamentos?data=2099-04-05', { headers: { Cookie: clientCookie } });
     assert.equal(rawSchedule.status, 401);
