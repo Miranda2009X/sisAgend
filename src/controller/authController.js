@@ -113,6 +113,11 @@ function requireAdminPage(req, res, next) {
   return next();
 }
 
+function redirectAuthenticatedAdmin(req, res, next) {
+  if (isAdminAuthenticated(req)) return res.redirect('/profissionais.html');
+  return next();
+}
+
 function requireClientPage(req, res, next) {
   const token = getCookie(req, CLIENT_COOKIE);
   const subject = tokenSubjectFromToken(token);
@@ -194,6 +199,7 @@ module.exports = {
 
   requireAdmin,
   requireAdminPage,
+  redirectAuthenticatedAdmin,
 
   async loginAdmin(req, res) {
     const { email, senha } = req.body || {};

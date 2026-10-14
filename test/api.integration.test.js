@@ -13,6 +13,7 @@ test('documented client and admin workflows preserve privacy and history', async
   process.env.JWT_SECRET = 'integration-test-secret-with-at-least-32-bytes';
   process.env.ADMIN_EMAIL = 'admin@example.test';
   process.env.ADMIN_PASSWORD = 'AdminPass123!';
+  process.env.ADMIN_PASSWORD_HASH = '';
 
   const config = require('../knexfile').development;
   const database = knexFactory(config);
@@ -98,6 +99,11 @@ test('documented client and admin workflows preserve privacy and history', async
     });
     assert.equal(adminLogin.status, 200);
     const adminCookie = adminLogin.headers.get('set-cookie').split(';', 1)[0];
+    const adminLoginPage = await call('/admin.html', { headers: { Cookie: adminCookie }, redirect: 'manual' });
+    assert.equal(adminLoginPage.status, 302);
+    assert.equal(adminLoginPage.headers.get('location'), '/profissionais.html');
+    const anonymousAdminLoginPage = await call('/admin.html');
+    assert.equal(anonymousAdminLoginPage.status, 200);
 
     const rawSchedule = await call('/agendamentos?data=2099-04-05', { headers: { Cookie: clientCookie } });
     assert.equal(rawSchedule.status, 401);
