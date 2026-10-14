@@ -13,6 +13,13 @@ const routes = require('./src/routes');
 const AuthController = require('./src/controller/authController');
 const app = express();
 const PORT = Number(process.env.SISAGEND_PORT) || 3001;
+const staticDirectory = path.join(__dirname, 'htmlTrabalho');
+const adminPages = new Set([
+  'profissionais.html',
+  'catalogo-admin.html',
+  'relatorios.html',
+  'clientes-admin.html'
+].map(file => path.resolve(staticDirectory, file)));
 
 // Prepara a aplicação para receber JSON e requisições do front-end.
 app.use(cors());
@@ -38,7 +45,21 @@ app.get('/clientes-admin.html', AuthController.requireAdminPage, (req, res) => {
 app.get('/agendamento.html', AuthController.requireClientPage, (req, res) => {
   res.sendFile(path.join(__dirname, 'htmlTrabalho', 'agendamento.html'));
 });
-app.use(express.static(path.join(__dirname, 'htmlTrabalho')));
+app.use((req, res, next) => {
+  let decodedPath;
+  try {
+    decodedPath = decodeURIComponent(req.path);
+  } catch (error) {
+    return res.sendStatus(400);
+  }
+
+  const requestedFile = path.resolve(staticDirectory, `.${decodedPath}`);
+  if (adminPages.has(requestedFile)) {
+    return AuthController.requireAdminPage(req, res, next);
+  }
+  return next();
+});
+app.use(express.static(staticDirectory));
 app.use(routes);
 
 if (require.main === module) {

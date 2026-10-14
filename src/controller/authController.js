@@ -5,7 +5,8 @@ const erroInterno = require('../utils/erro');
 
 const ADMIN_COOKIE = 'sisagend_admin';
 const CLIENT_COOKIE = 'sisagend_client';
-const ADMIN_SESSION_SECONDS = 8 * 60 * 60;
+const ADMIN_SESSION_SECONDS = 30 * 60;
+const CLIENT_SESSION_SECONDS = 8 * 60 * 60;
 
 // Recusa sessões administrativas se o segredo não estiver configurado com tamanho mínimo.
 function getAdminSecret() {
@@ -20,10 +21,11 @@ function secureCompare(first, second) {
 }
 
 function createAdminToken() {
-  // Assina o payload e define expiração para permitir sessão sem estado no servidor.
+  const issuedAt = Math.floor(Date.now() / 1000);
   const payload = Buffer.from(JSON.stringify({
     sub: 'admin',
-    exp: Math.floor(Date.now() / 1000) + ADMIN_SESSION_SECONDS
+    iat: issuedAt,
+    exp: issuedAt + ADMIN_SESSION_SECONDS
   })).toString('base64url');
   const signature = crypto.createHmac('sha256', getAdminSecret()).update(payload).digest('base64url');
   return `${payload}.${signature}`;
@@ -57,23 +59,27 @@ function verifyToken(token, expectedSubject) {
 }
 
 function isAdminAuthenticated(req) {
-  return verifyToken(getCookie(req, ADMIN_COOKIE), 'admin');
+  const session = verifyToken(getCookie(req, ADMIN_COOKIE), 'admin');
+  return session && Number.isInteger(session.iat) && session.exp - session.iat <= ADMIN_SESSION_SECONDS
+    ? session
+    : false;
 }
 
-function setSessionCookie(res, name, token) {
+function setSessionCookie(res, name, token, { sessionOnly = false } = {}) {
   const secureFlag = process.env.NODE_ENV === 'production' ? '; Secure' : '';
-  res.setHeader('Set-Cookie', `${name}=${token}; HttpOnly; SameSite=Strict; Path=/; Max-Age=${ADMIN_SESSION_SECONDS}${secureFlag}`);
+  const maxAge = sessionOnly ? '' : `; Max-Age=${CLIENT_SESSION_SECONDS}`;
+  res.setHeader('Set-Cookie', `${name}=${token}; HttpOnly; SameSite=Lax; Path=/${maxAge}${secureFlag}`);
 }
 
 function clearSessionCookie(res, name) {
   const secureFlag = process.env.NODE_ENV === 'production' ? '; Secure' : '';
-  res.setHeader('Set-Cookie', `${name}=; HttpOnly; SameSite=Strict; Path=/; Max-Age=0${secureFlag}`);
+  res.setHeader('Set-Cookie', `${name}=; HttpOnly; SameSite=Lax; Path=/; Max-Age=0${secureFlag}`);
 }
 
 function createClientToken(id) {
   const payload = Buffer.from(JSON.stringify({
     sub: `client:${id}`,
-    exp: Math.floor(Date.now() / 1000) + ADMIN_SESSION_SECONDS
+    exp: Math.floor(Date.now() / 1000) + CLIENT_SESSION_SECONDS
   })).toString('base64url');
   const signature = crypto.createHmac('sha256', getAdminSecret()).update(payload).digest('base64url');
   return `${payload}.${signature}`;
@@ -83,6 +89,7 @@ function requireAdmin(req, res, next) {
   if (!isAdminAuthenticated(req)) {
     return res.status(401).json({ error: 'Acesso restrito à área administrativa.' });
   }
+  setSessionCookie(res, ADMIN_COOKIE, createAdminToken(), { sessionOnly: true });
   return next();
 }
 
@@ -110,11 +117,15 @@ async function requireClient(req, res, next) {
 
 function requireAdminPage(req, res, next) {
   if (!isAdminAuthenticated(req)) return res.redirect('/admin.html');
+  setSessionCookie(res, ADMIN_COOKIE, createAdminToken(), { sessionOnly: true });
   return next();
 }
 
 function redirectAuthenticatedAdmin(req, res, next) {
-  if (isAdminAuthenticated(req)) return res.redirect('/profissionais.html');
+  if (isAdminAuthenticated(req)) {
+    setSessionCookie(res, ADMIN_COOKIE, createAdminToken(), { sessionOnly: true });
+    return res.redirect('/profissionais.html');
+  }
   return next();
 }
 
@@ -221,7 +232,7 @@ module.exports = {
       return res.status(401).json({ error: 'E-mail ou senha incorretos.' });
     }
 
-    setSessionCookie(res, ADMIN_COOKIE, createAdminToken());
+    setSessionCookie(res, ADMIN_COOKIE, createAdminToken(), { sessionOnly: true });
     return res.json({ message: 'Login administrativo realizado com sucesso.' });
   },
 
