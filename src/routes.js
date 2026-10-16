@@ -1,15 +1,17 @@
+// Registra endpoints públicos e as rotas protegidas de cada perfil.
 const express = require('express');
 const bcrypt = require('bcrypt');
 const routes = express.Router();
 
 const db = require('./database/connection');
-const ClienteController = require('./controller/clienteController');
-const ServicoController = require('./controller/servicoController');
-const AgendamentoController = require('./controller/agendamentoController');
-const AuthController = require('./controller/authController');
-const CatalogController = require('./controller/catalogController');
-const RelatorioController = require('./controller/relatorioController');
+const ClienteController = require('./controllers/clienteController');
+const ServicoController = require('./controllers/servicoController');
+const AgendamentoController = require('./controllers/agendamentoController');
+const AuthController = require('./controllers/authController');
+const CatalogController = require('./controllers/catalogController');
+const RelatorioController = require('./controllers/relatorioController');
 const erroInterno = require('./utils/erro');
+const uploadImagem = require('./utils/uploadImagem');
 
 function dataCalendarioValida(value) {
   if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
@@ -34,8 +36,14 @@ routes.post('/clientes', async (req, res) => {
     if (senha.length < 6) return res.status(400).json({ error: "A senha deve ter pelo menos 6 caracteres." });
 
     const emailNormalizado = email.trim().toLowerCase();
-    const clienteExistente = await db('CLIENTE').where('email', emailNormalizado).first();
-    if (clienteExistente) return res.status(409).json({ error: "Este e-mail já está cadastrado." });
+    const [clienteExistente, profissionalExistente] = await Promise.all([
+      db('CLIENTE').whereRaw('lower(email) = ?', [emailNormalizado]).first(),
+      db('PROFISSIONAL').whereRaw('lower(email) = ?', [emailNormalizado]).first()
+    ]);
+    if (clienteExistente || profissionalExistente ||
+      emailNormalizado === process.env.ADMIN_EMAIL?.trim().toLowerCase()) {
+      return res.status(409).json({ error: "Este e-mail já está associado a outra conta." });
+    }
 
     const senha_hash = await bcrypt.hash(senha, 10);
     const [id_cliente] = await db('CLIENTE').insert({ nome: nome.trim(), telefone: telefone.trim(), email: emailNormalizado, senha_hash });
@@ -49,8 +57,13 @@ routes.post('/clientes', async (req, res) => {
 routes.post('/admin/login', AuthController.loginAdmin);
 routes.post('/admin/logout', AuthController.logoutAdmin);
 routes.post('/cliente/logout', AuthController.logoutClient);
+routes.post('/profissional/logout', AuthController.logoutProfessional);
 routes.get('/cliente/sessao', AuthController.clientSession);
 routes.get('/clientes/me', AuthController.requireClient, (req, res) => res.json(req.client));
+routes.get('/profissional/sessao', AuthController.requireProfessional, (req, res) => res.json(req.professional));
+routes.get('/profissional/agendamentos', AuthController.requireProfessional, AgendamentoController.listarDaProfissional);
+routes.put('/profissional/agendamentos/:id/status', AuthController.requireProfessional, AgendamentoController.atualizarStatusDaProfissional);
+routes.put('/profissional/agendamentos/:id/reagendar', AuthController.requireProfessional, AgendamentoController.reagendarDaProfissional);
 
 // Alterações no catálogo e nos profissionais exigem sessão administrativa.
 routes.get('/admin/catalogo', AuthController.requireAdmin, CatalogController.listAdmin);
@@ -59,8 +72,8 @@ routes.post('/profissionais', AuthController.requireAdmin, CatalogController.cre
 routes.put('/profissionais/:id', AuthController.requireAdmin, CatalogController.updateProfessional);
 routes.post('/categorias', AuthController.requireAdmin, CatalogController.createCategory);
 routes.put('/categorias/:id', AuthController.requireAdmin, CatalogController.updateCategory);
-routes.post('/servicos', AuthController.requireAdmin, CatalogController.createService);
-routes.put('/servicos/:id', AuthController.requireAdmin, CatalogController.updateService);
+routes.post('/servicos', AuthController.requireAdmin, uploadImagem, CatalogController.createService);
+routes.put('/servicos/:id', AuthController.requireAdmin, uploadImagem, CatalogController.updateService);
 
 routes.post('/login', AuthController.login);
 routes.get('/clientes', AuthController.requireAdmin, ClienteController.listar);
