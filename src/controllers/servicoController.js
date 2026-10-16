@@ -1,3 +1,4 @@
+// Fornece ao site público somente os serviços ativos do catálogo.
 const db = require('../database/connection');
 const erroInterno = require('../utils/erro');
 

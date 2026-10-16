@@ -1,3 +1,4 @@
+// Consolida atendimentos e faturamento dentro do período solicitado.
 const db = require('../database/connection');
 const erroInterno = require('../utils/erro');
 

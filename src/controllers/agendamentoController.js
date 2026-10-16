@@ -1,3 +1,4 @@
+// Implementa disponibilidade, criação e gerenciamento de reservas.
 const db = require('../database/connection');
 const erroInterno = require('../utils/erro');
 const { horariosDisponiveis } = require('../utils/disponibilidade');
@@ -182,6 +183,118 @@ module.exports = {
         .where('AGENDAMENTO.id_cliente', req.client.id_cliente)
         .orderBy('AGENDAMENTO.data_hora_inicio', 'desc');
       return res.json(agendamentos);
+    } catch (error) {
+      return erroInterno(res, error);
+    }
+  },
+
+  async listarDaProfissional(req, res) {
+    try {
+      const { data } = req.query;
+      if (typeof data !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(data)) {
+        return res.status(400).json({ error: 'Informe a data da agenda no formato AAAA-MM-DD.' });
+      }
+      const [year, month, day] = data.split('-').map(Number);
+      const calendarDate = new Date(year, month - 1, day);
+      if (calendarDate.getFullYear() !== year || calendarDate.getMonth() !== month - 1 || calendarDate.getDate() !== day) {
+        return res.status(400).json({ error: 'Informe uma data válida no formato AAAA-MM-DD.' });
+      }
+
+      const agendamentos = await db('AGENDAMENTO')
+        .join('CLIENTE', 'AGENDAMENTO.id_cliente', '=', 'CLIENTE.id_cliente')
+        .join('SERVICO', 'AGENDAMENTO.id_servico', '=', 'SERVICO.id_servico')
+        .select(
+          'AGENDAMENTO.id_agendamento',
+          'AGENDAMENTO.id_profissional',
+          'AGENDAMENTO.id_servico',
+          'AGENDAMENTO.data_hora_inicio',
+          'AGENDAMENTO.data_hora_fim',
+          'AGENDAMENTO.status',
+          'AGENDAMENTO.justificativa_cancelamento',
+          'CLIENTE.nome as cliente_nome',
+          'CLIENTE.telefone as cliente_telefone',
+          'SERVICO.nome_servico',
+          'SERVICO.duracao_minutos'
+        )
+        .where('AGENDAMENTO.id_profissional', req.professional.id_profissional)
+        .whereLike('AGENDAMENTO.data_hora_inicio', `${data}%`)
+        .orderBy('AGENDAMENTO.data_hora_inicio');
+      return res.json({
+        profissional: { id_profissional: req.professional.id_profissional, nome: req.professional.nome },
+        data,
+        agendamentos
+      });
+    } catch (error) {
+      return erroInterno(res, error);
+    }
+  },
+
+  async atualizarStatusDaProfissional(req, res) {
+    try {
+      const id = Number(req.params.id);
+      const { status, justificativa_cancelamento } = req.body || {};
+      if (!Number.isInteger(id) || id < 1) return res.status(400).json({ error: 'Agendamento inválido.' });
+
+      const agendamento = await db('AGENDAMENTO')
+        .where({ id_agendamento: id, id_profissional: req.professional.id_profissional })
+        .first();
+      if (!agendamento) return res.status(404).json({ error: 'Agendamento não encontrado.' });
+
+      const allowedTransitions = {
+        Pendente: ['Confirmado', 'Cancelado'],
+        Confirmado: ['Concluido', 'Cancelado']
+      };
+      if (!allowedTransitions[agendamento.status]?.includes(status)) {
+        return res.status(400).json({ error: 'Esta alteração de status não é permitida.' });
+      }
+
+      const justification = typeof justificativa_cancelamento === 'string'
+        ? justificativa_cancelamento.trim()
+        : '';
+      if (status === 'Cancelado' && !justification) {
+        return res.status(400).json({ error: 'Informe o motivo do cancelamento.' });
+      }
+      if (justification.length > 500) {
+        return res.status(400).json({ error: 'O motivo deve ter no máximo 500 caracteres.' });
+      }
+
+      await db('AGENDAMENTO').where('id_agendamento', id).update({
+        status,
+        justificativa_cancelamento: status === 'Cancelado' ? justification : null
+      });
+      return res.json({ message: `Agendamento atualizado para ${status}.` });
+    } catch (error) {
+      return erroInterno(res, error);
+    }
+  },
+
+  async reagendarDaProfissional(req, res) {
+    try {
+      const id = Number(req.params.id);
+      const { data_hora_inicio } = req.body || {};
+      if (!Number.isInteger(id) || id < 1) return res.status(400).json({ error: 'Agendamento inválido.' });
+      if (typeof data_hora_inicio !== 'string' || !data_hora_inicio) {
+        return res.status(400).json({ error: 'Informe a nova data e horário.' });
+      }
+
+      const agendamento = await db('AGENDAMENTO')
+        .where({ id_agendamento: id, id_profissional: req.professional.id_profissional })
+        .first();
+      if (!agendamento) return res.status(404).json({ error: 'Agendamento não encontrado.' });
+      if (!['Pendente', 'Confirmado'].includes(agendamento.status)) {
+        return res.status(400).json({ error: `Não é possível remarcar um agendamento ${agendamento.status.toLowerCase()}.` });
+      }
+
+      const { erro, data_hora_fim } = await validarHorario({
+        id_profissional: agendamento.id_profissional,
+        id_servico: agendamento.id_servico,
+        data_hora_inicio,
+        ignorarAgendamento: id
+      });
+      if (erro) return res.status(400).json({ error: erro });
+
+      await db('AGENDAMENTO').where('id_agendamento', id).update({ data_hora_inicio, data_hora_fim });
+      return res.json({ message: 'Agendamento remarcado com sucesso.' });
     } catch (error) {
       return erroInterno(res, error);
     }

@@ -1,3 +1,4 @@
+// Expõe operações administrativas e de autoatendimento para clientes.
 const bcrypt = require('bcrypt');
 const db = require('../database/connection');
 const erroInterno = require('../utils/erro');
@@ -26,8 +27,13 @@ async function atualizarCliente(req, res, id) {
     if (Object.hasOwn(body, 'email')) {
       const email = typeof body.email === 'string' ? body.email.trim().toLowerCase() : '';
       if (!validarEmail(email)) return res.status(400).json({ error: 'Informe um e-mail válido.' });
-      const duplicado = await db('CLIENTE').where('email', email).whereNot('id_cliente', id).first();
-      if (duplicado) return res.status(409).json({ error: 'Este e-mail já está cadastrado.' });
+      const [duplicado, profissional] = await Promise.all([
+        db('CLIENTE').whereRaw('lower(email) = ?', [email]).whereNot('id_cliente', id).first(),
+        db('PROFISSIONAL').whereRaw('lower(email) = ?', [email]).first()
+      ]);
+      if (duplicado || profissional || email === process.env.ADMIN_EMAIL?.trim().toLowerCase()) {
+        return res.status(409).json({ error: 'Este e-mail já está associado a outra conta.' });
+      }
       atualizacoes.email = email;
     }
     if (Object.hasOwn(body, 'senha')) {
