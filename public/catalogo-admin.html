@@ -1,0 +1,638 @@
+<!DOCTYPE html>
+<!-- Gestão administrativa de categorias, serviços, imagens e equipe. -->
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Gerencie os serviços, categorias e profissionais da Berenice Braids.">
+    <meta name="theme-color" content="#123d42">
+    <title>Catálogo administrativo | Berenice Braids</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css.css">
+  </head>
+  <body>
+    <header class="shell topbar">
+      <a class="brand" href="/profissionais.html" aria-label="Área administrativa Berenice Braids">
+        <span class="brand-mark">B</span><span>Berenice Braids</span>
+      </a>
+      <nav class="nav" aria-label="Navegação administrativa">
+        <a href="/profissionais.html">Agenda</a>
+        <a href="/catalogo-admin.html" aria-current="page">Catálogo</a>
+        <a href="/clientes-admin.html">Clientes</a>
+        <a href="/relatorios.html">Relatórios</a>
+        <button class="button button-quiet" id="admin-logout" type="button">Sair</button>
+      </nav>
+      <button class="menu-toggle" type="button" aria-label="Abrir menu" aria-expanded="false">☰</button>
+    </header>
+
+    <main>
+      <section class="section catalog-page">
+        <div class="shell">
+          <div class="catalog-heading">
+            <div>
+              <span class="eyebrow">Área administrativa</span>
+              <h1>Catálogo.</h1>
+            </div>
+            <p>Organize os itens na ordem em que aparecem no site: crie categorias, cadastre serviços e associe cada profissional ao que realiza.</p>
+          </div>
+          <nav class="catalog-steps" aria-label="Etapas do catálogo">
+            <a href="#categories"><span>01</span> Categorias</a>
+            <a href="#services"><span>02</span> Serviços</a>
+            <a href="#professionals"><span>03</span> Profissionais</a>
+          </nav>
+          <div class="catalog-admin-grid">
+            <section class="catalog-admin-panel" id="categories">
+              <div class="catalog-panel-heading">
+                <span class="catalog-step-number">01</span>
+                <div><h2>Categorias</h2><p>Agrupe serviços por tipo.</p></div>
+              </div>
+              <div class="catalog-workspace catalog-category-workspace">
+                <form id="category-form" class="catalog-admin-form">
+                  <label for="category-name">Nome da categoria</label>
+                  <input id="category-name" name="nome_categoria" required maxlength="100" placeholder="Ex.: Tranças">
+                  <button class="button button-primary" type="submit">Adicionar categoria</button>
+                </form>
+                <div class="catalog-list-area">
+                  <div class="catalog-list-heading"><h3>Cadastradas</h3><span class="catalog-count" id="category-count">0</span></div>
+                  <div id="category-list" class="catalog-admin-list" aria-live="polite"></div>
+                </div>
+              </div>
+            </section>
+
+            <section class="catalog-admin-panel catalog-admin-panel-wide" id="services">
+              <div class="catalog-panel-heading">
+                <span class="catalog-step-number">02</span>
+                <div><h2>Serviços</h2><p>Defina preço, duração e como cada serviço será apresentado.</p></div>
+              </div>
+              <div class="catalog-workspace">
+                <form id="service-form" class="catalog-admin-form catalog-service-form">
+                  <div class="catalog-field catalog-field-wide">
+                    <label for="service-name">Nome do serviço</label>
+                    <input id="service-name" name="nome_servico" required maxlength="120" placeholder="Ex.: Box braids">
+                  </div>
+                  <div class="catalog-field">
+                    <label for="service-category">Categoria</label>
+                    <select id="service-category" name="id_categoria" required></select>
+                  </div>
+                  <div class="catalog-field">
+                    <label for="service-price">Preço (R$)</label>
+                    <input id="service-price" name="preco" type="number" min="0" step="0.01" required placeholder="0,00">
+                  </div>
+                  <div class="catalog-field">
+                    <label for="service-duration">Duração (minutos)</label>
+                    <input id="service-duration" name="duracao_minutos" type="number" min="1" step="1" required placeholder="Ex.: 60">
+                  </div>
+                  <div class="catalog-field catalog-field-wide">
+                    <label for="service-description">Descrição <span>(opcional)</span></label>
+                    <textarea id="service-description" name="descricao" maxlength="1000" rows="2" placeholder="Conte brevemente sobre o serviço"></textarea>
+                  </div>
+                  <div class="catalog-field catalog-field-wide">
+                    <span class="catalog-field-label">Imagem <span>(opcional)</span></span>
+                    <label class="image-drop-zone" id="image-drop-zone" for="service-image">
+                      <input id="service-image" name="imagem" type="file" accept="image/jpeg,image/png,image/webp,image/gif">
+                      <img class="image-drop-preview" id="image-preview" alt="Prévia da imagem selecionada" hidden>
+                      <span class="image-drop-copy"><strong>Arraste uma imagem até aqui</strong><span>ou clique para escolher no computador</span><small>JPG, PNG, WebP ou GIF · até 5 MB</small></span>
+                    </label>
+                  </div>
+                  <button class="button button-primary" type="submit">Adicionar serviço</button>
+                </form>
+                <div class="catalog-list-area">
+                  <div class="catalog-list-heading"><h3>Cadastrados</h3><span class="catalog-count" id="service-count">0</span></div>
+                  <div id="service-list" class="catalog-admin-list" aria-live="polite"></div>
+                </div>
+              </div>
+            </section>
+
+            <section class="catalog-admin-panel catalog-admin-panel-wide" id="professionals">
+              <div class="catalog-panel-heading">
+                <span class="catalog-step-number">03</span>
+                <div><h2>Profissionais</h2><p>Associe serviços e crie o acesso individual de cada profissional.</p></div>
+              </div>
+              <div class="catalog-workspace">
+                <form id="professional-form" class="catalog-admin-form catalog-professional-form">
+                  <div class="catalog-field">
+                    <label for="professional-name">Nome</label>
+                    <input id="professional-name" name="nome" required maxlength="120" placeholder="Nome completo">
+                  </div>
+                  <div class="catalog-field">
+                    <label for="professional-phone">Telefone</label>
+                    <input id="professional-phone" name="telefone" type="tel" required maxlength="30" placeholder="(00) 00000-0000">
+                  </div>
+                  <div class="catalog-field">
+                    <label for="professional-email">E-mail de acesso</label>
+                    <input id="professional-email" name="email" type="email" required maxlength="254" autocomplete="off" placeholder="profissional@email.com">
+                  </div>
+                  <div class="catalog-field">
+                    <label for="professional-password">Senha inicial</label>
+                    <input id="professional-password" name="senha" type="password" required minlength="6" autocomplete="new-password" placeholder="Mínimo de 6 caracteres">
+                  </div>
+                  <fieldset class="catalog-service-options">
+                    <legend>Serviços realizados <span>(selecione ao menos um)</span></legend>
+                    <div id="professional-services"><p class="empty-state">Carregando serviços...</p></div>
+                  </fieldset>
+                  <p class="microcopy">Ela aparecerá no agendamento somente para os serviços selecionados.</p>
+                  <button class="button button-primary" type="submit">Adicionar profissional</button>
+                </form>
+                <div class="catalog-list-area">
+                  <div class="catalog-list-heading"><h3>Cadastradas</h3><span class="catalog-count" id="professional-count">0</span></div>
+                  <div id="professional-list" class="catalog-admin-list" aria-live="polite"></div>
+                </div>
+              </div>
+            </section>
+          </div>
+          <p class="form-message" id="catalog-message" role="status" aria-live="polite"></p>
+        </div>
+      </section>
+    </main>
+
+    <footer class="shell footer">
+      <div class="footer-row">
+        <small>© 2026 Berenice Braids. Área administrativa.</small>
+        <div class="socials"><a href="/profissionais.html">Voltar à agenda</a></div>
+      </div>
+    </footer>
+
+    <dialog class="catalog-edit-dialog" id="catalog-edit-dialog" aria-labelledby="catalog-edit-title" aria-describedby="catalog-edit-description">
+      <form id="catalog-edit-form">
+        <div class="catalog-edit-heading">
+          <div><span class="eyebrow">Editar catálogo</span><h2 id="catalog-edit-title"></h2></div>
+          <button class="appointment-action" id="close-catalog-edit" type="button" aria-label="Fechar">×</button>
+        </div>
+        <p id="catalog-edit-description"></p>
+        <div class="catalog-edit-fields" id="catalog-edit-fields"></div>
+        <p class="form-message" id="catalog-edit-message" role="status" aria-live="polite"></p>
+        <div class="dialog-actions">
+          <button class="appointment-action" id="cancel-catalog-edit" type="button">Cancelar</button>
+          <button class="button button-primary" type="submit">Salvar alterações</button>
+        </div>
+      </form>
+    </dialog>
+
+    <script>
+      const apiUrl = window.location.origin;
+      const categoryList = document.querySelector("#category-list");
+      const professionalList = document.querySelector("#professional-list");
+      const serviceList = document.querySelector("#service-list");
+      const categoryCount = document.querySelector("#category-count");
+      const professionalCount = document.querySelector("#professional-count");
+      const serviceCount = document.querySelector("#service-count");
+      const categorySelect = document.querySelector("#service-category");
+      const professionalServices = document.querySelector("#professional-services");
+      const imageInput = document.querySelector("#service-image");
+      const imageDropZone = document.querySelector("#image-drop-zone");
+      const imagePreview = document.querySelector("#image-preview");
+      const message = document.querySelector("#catalog-message");
+      const editDialog = document.querySelector("#catalog-edit-dialog");
+      const editForm = document.querySelector("#catalog-edit-form");
+      const editTitle = document.querySelector("#catalog-edit-title");
+      const editDescription = document.querySelector("#catalog-edit-description");
+      const editFields = document.querySelector("#catalog-edit-fields");
+      const editMessage = document.querySelector("#catalog-edit-message");
+      let catalog = { categorias: [], profissionais: [], servicos: [], profissionalServicos: [] };
+      let imagePreviewUrl = null;
+      let editing = null;
+
+      const escapeHtml = value => String(value).replace(/[&<>"']/g, character => ({
+        "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
+      })[character]);
+
+      async function request(path, options = {}) {
+        const isMultipart = options.body instanceof FormData;
+        const response = await fetch(`${apiUrl}${path}`, {
+          ...options,
+          headers: { ...(options.body && !isMultipart ? { "Content-Type": "application/json" } : {}), ...options.headers }
+        });
+        const result = response.status === 204 ? {} : await response.json();
+        if (response.status === 401) {
+          window.location.replace("/admin.html");
+          throw new Error("Sua sessão administrativa expirou.");
+        }
+        if (!response.ok) throw new Error(result.error || "Não foi possível concluir a operação.");
+        return result;
+      }
+
+      function showMessage(text, isError = false) {
+        message.className = `form-message ${isError ? "error" : "success"}`;
+        message.textContent = text;
+      }
+
+      function escapeAttribute(value) {
+        return escapeHtml(value).replace(/`/g, "&#96;");
+      }
+
+      function renderCatalog() {
+        categoryCount.textContent = catalog.categorias.length;
+        professionalCount.textContent = catalog.profissionais.length;
+        serviceCount.textContent = catalog.servicos.length;
+        categorySelect.innerHTML = catalog.categorias.map(category =>
+          `<option value="${category.id_categoria}">${escapeHtml(category.nome_categoria)}</option>`
+        ).join("");
+        categoryList.innerHTML = catalog.categorias.length ? catalog.categorias.map(category => `
+          <article class="catalog-admin-item">
+            <span>${escapeHtml(category.nome_categoria)}</span>
+            <button class="appointment-action" type="button" data-action="edit-category" data-id="${category.id_categoria}">Renomear</button>
+          </article>`).join("") : '<p class="empty-state">Cadastre a primeira categoria.</p>';
+
+        // As especialidades selecionadas controlam em quais agendamentos a equipe aparece.
+        professionalServices.innerHTML = catalog.servicos.length ? catalog.servicos.map(service => `
+          <label class="catalog-service-option"><input type="checkbox" name="ids_servico" value="${service.id_servico}"> ${escapeHtml(service.nome_servico)}</label>
+        `).join("") : '<p class="empty-state">Cadastre serviços antes de associá-los.</p>';
+        professionalList.innerHTML = catalog.profissionais.length ? catalog.profissionais.map(professional => {
+          const associated = catalog.profissionalServicos.filter(link => Number(link.id_profissional) === Number(professional.id_profissional));
+          const names = associated.map(link => catalog.servicos.find(service => Number(service.id_servico) === Number(link.id_servico))?.nome_servico).filter(Boolean);
+          return `<article class="catalog-admin-item catalog-admin-item-stacked" data-active="${Boolean(Number(professional.ativo))}">
+            <div><strong>${escapeHtml(professional.nome)}</strong><small>${escapeHtml(professional.telefone)}</small>
+              <small>Acesso: ${escapeHtml(professional.email || "não configurado")}</small>
+              <small>Serviços: ${escapeHtml(names.join(", ") || "Nenhum associado")}</small></div>
+            <div class="catalog-admin-actions">
+              <button class="appointment-action" type="button" data-action="edit-professional" data-id="${professional.id_profissional}">Editar</button>
+              <button class="appointment-action" type="button" data-action="toggle-professional" data-id="${professional.id_profissional}" data-active="${Boolean(Number(professional.ativo))}">${professional.ativo ? "Desativar" : "Ativar"}</button>
+            </div>
+          </article>`;
+        }).join("") : '<p class="empty-state">Nenhuma profissional cadastrada.</p>';
+
+        serviceList.innerHTML = catalog.servicos.length ? catalog.servicos.map(service => `
+          <article class="catalog-admin-item catalog-admin-item-stacked" data-active="${Boolean(Number(service.ativo))}">
+            <div><strong>${escapeHtml(service.nome_servico)}</strong><small>${escapeHtml(service.nome_categoria)} · R$ ${Number(service.preco).toFixed(2)} · ${Number(service.duracao_minutos)} min</small></div>
+            <div class="catalog-admin-actions">
+              <button class="appointment-action" type="button" data-action="edit-service" data-id="${service.id_servico}">Editar</button>
+              <button class="appointment-action" type="button" data-action="toggle-service" data-id="${service.id_servico}" data-active="${Boolean(Number(service.ativo))}">${service.ativo ? "Desativar" : "Ativar"}</button>
+            </div>
+          </article>`).join("") : '<p class="empty-state">Nenhum serviço cadastrado.</p>';
+      }
+
+      async function loadCatalog() {
+        catalog = await request("/admin/catalogo");
+        renderCatalog();
+      }
+
+      document.querySelector("#category-form").addEventListener("submit", async event => {
+        event.preventDefault();
+        const form = event.currentTarget;
+        try {
+          await request("/categorias", { method: "POST", body: JSON.stringify(Object.fromEntries(new FormData(form))) });
+          form.reset();
+          await loadCatalog();
+          showMessage("Categoria adicionada.");
+        } catch (error) { showMessage(error.message, true); }
+      });
+
+      document.querySelector("#professional-form").addEventListener("submit", async event => {
+        event.preventDefault();
+        const form = event.currentTarget;
+        const data = new FormData(form);
+        const payload = {
+          nome: data.get("nome"),
+          telefone: data.get("telefone"),
+          email: data.get("email"),
+          senha: data.get("senha"),
+          ids_servico: data.getAll("ids_servico")
+        };
+        if (!payload.ids_servico.length) {
+          showMessage("Selecione ao menos um serviço realizado pela profissional.", true);
+          return;
+        }
+        try {
+          await request("/profissionais", { method: "POST", body: JSON.stringify(payload) });
+          form.reset();
+          await loadCatalog();
+          showMessage("Profissional adicionada.");
+        } catch (error) { showMessage(error.message, true); }
+      });
+
+      document.querySelector("#service-form").addEventListener("submit", async event => {
+        event.preventDefault();
+        const form = event.currentTarget;
+        const submitButton = form.querySelector("button[type='submit']");
+        submitButton.disabled = true;
+        try {
+          await request("/servicos", { method: "POST", body: new FormData(form) });
+          form.reset();
+          clearImagePreview();
+          await loadCatalog();
+          showMessage("Serviço adicionado.");
+        } catch (error) { showMessage(error.message, true); }
+        finally { submitButton.disabled = false; }
+      });
+
+      function clearImagePreview() {
+        if (imagePreviewUrl) URL.revokeObjectURL(imagePreviewUrl);
+        imagePreviewUrl = null;
+        imagePreview.removeAttribute("src");
+        imagePreview.hidden = true;
+        imageDropZone.classList.remove("has-image", "is-dragging");
+      }
+
+      function previewSelectedImage(file) {
+        if (!file) {
+          clearImagePreview();
+          return;
+        }
+        if (!["image/jpeg", "image/png", "image/webp", "image/gif"].includes(file.type)) {
+          imageInput.value = "";
+          clearImagePreview();
+          showMessage("Escolha uma imagem JPG, PNG, WebP ou GIF.", true);
+          return;
+        }
+        if (file.size > 5 * 1024 * 1024) {
+          imageInput.value = "";
+          clearImagePreview();
+          showMessage("A imagem deve ter no máximo 5 MB.", true);
+          return;
+        }
+        if (imagePreviewUrl) URL.revokeObjectURL(imagePreviewUrl);
+        imagePreviewUrl = URL.createObjectURL(file);
+        imagePreview.src = imagePreviewUrl;
+        imagePreview.hidden = false;
+        imageDropZone.classList.add("has-image");
+        message.className = "form-message";
+        message.textContent = "";
+      }
+
+      imageInput.addEventListener("change", () => previewSelectedImage(imageInput.files[0]));
+      ["dragenter", "dragover"].forEach(eventName => imageDropZone.addEventListener(eventName, event => {
+        event.preventDefault();
+        imageDropZone.classList.add("is-dragging");
+      }));
+      ["dragleave", "drop"].forEach(eventName => imageDropZone.addEventListener(eventName, event => {
+        event.preventDefault();
+        imageDropZone.classList.remove("is-dragging");
+      }));
+      imageDropZone.addEventListener("drop", event => {
+        const [file] = event.dataTransfer.files;
+        if (!file) return;
+        const transfer = new DataTransfer();
+        transfer.items.add(file);
+        imageInput.files = transfer.files;
+        previewSelectedImage(file);
+      });
+
+      function openEditDialog(type, item) {
+        const id = type === "category" ? item.id_categoria
+          : type === "professional" ? item.id_profissional
+            : item.id_servico;
+        editing = { type, id: Number(id) };
+        editForm.reset();
+        editMessage.className = "form-message";
+        editMessage.textContent = "";
+        editFields.innerHTML = "";
+
+        if (type === "category") {
+          editTitle.textContent = "Editar categoria";
+          editDescription.textContent = "Atualize o nome da categoria.";
+          editFields.innerHTML = `
+            <div class="catalog-field">
+              <label for="edit-category-name">Nome da categoria</label>
+              <input id="edit-category-name" name="nome_categoria" required maxlength="100" value="${escapeAttribute(item.nome_categoria)}">
+            </div>`;
+        } else if (type === "professional") {
+          editTitle.textContent = "Editar profissional";
+          editDescription.textContent = "Atualize os dados de acesso e os serviços realizados. Deixe a nova senha vazia para mantê-la.";
+          const serviceIds = catalog.profissionalServicos
+            .filter(link => Number(link.id_profissional) === Number(item.id_profissional))
+            .map(link => Number(link.id_servico));
+          editFields.innerHTML = `
+            <div class="catalog-field">
+              <label for="edit-professional-name">Nome</label>
+              <input id="edit-professional-name" name="nome" required maxlength="120" value="${escapeAttribute(item.nome)}">
+            </div>
+            <div class="catalog-field">
+              <label for="edit-professional-phone">Telefone</label>
+              <input id="edit-professional-phone" name="telefone" type="tel" required maxlength="30" value="${escapeAttribute(item.telefone)}">
+            </div>
+            <div class="catalog-field">
+              <label for="edit-professional-email">E-mail de acesso</label>
+              <input id="edit-professional-email" name="email" type="email" required maxlength="254" autocomplete="off" value="${escapeAttribute(item.email || "")}">
+            </div>
+            <div class="catalog-field">
+              <label for="edit-professional-password">Nova senha <span>(opcional)</span></label>
+              <input id="edit-professional-password" name="senha" type="password" minlength="6" autocomplete="new-password" placeholder="Deixe vazio para manter a senha">
+            </div>
+            <fieldset class="catalog-service-options">
+              <legend>Serviços realizados <span>(selecione ao menos um)</span></legend>
+              ${catalog.servicos.map(service => `
+                <label class="catalog-service-option">
+                  <input type="checkbox" name="ids_servico" value="${service.id_servico}" ${serviceIds.includes(Number(service.id_servico)) ? "checked" : ""}>
+                  ${escapeHtml(service.nome_servico)}
+                </label>`).join("")}
+            </fieldset>`;
+        } else {
+          editTitle.textContent = "Editar serviço";
+          editDescription.textContent = "Atualize os dados exibidos no catálogo público.";
+          editFields.innerHTML = `
+            <div class="catalog-field catalog-field-wide">
+              <label for="edit-service-name">Nome do serviço</label>
+              <input id="edit-service-name" name="nome_servico" required maxlength="120" value="${escapeAttribute(item.nome_servico)}">
+            </div>
+            <div class="catalog-field">
+              <label for="edit-service-category">Categoria</label>
+              <select id="edit-service-category" name="id_categoria" required>
+                ${catalog.categorias.map(category => `<option value="${category.id_categoria}" ${Number(category.id_categoria) === Number(item.id_categoria) ? "selected" : ""}>${escapeHtml(category.nome_categoria)}</option>`).join("")}
+              </select>
+            </div>
+            <div class="catalog-field">
+              <label for="edit-service-price">Preço (R$)</label>
+              <input id="edit-service-price" name="preco" type="number" min="0" step="0.01" required value="${escapeAttribute(item.preco)}">
+            </div>
+            <div class="catalog-field">
+              <label for="edit-service-duration">Duração (minutos)</label>
+              <input id="edit-service-duration" name="duracao_minutos" type="number" min="1" step="1" required value="${escapeAttribute(item.duracao_minutos)}">
+            </div>
+            <div class="catalog-field catalog-field-wide">
+              <label for="edit-service-description">Descrição <span>(opcional)</span></label>
+              <textarea id="edit-service-description" name="descricao" maxlength="1000" rows="3">${escapeHtml(item.descricao || "")}</textarea>
+            </div>
+            <div class="catalog-field catalog-field-wide">
+              <span class="catalog-field-label">Imagem <span>(opcional)</span></span>
+              ${item.imagem_url ? `<label class="catalog-edit-current-image"><img src="${escapeAttribute(item.imagem_url)}" alt="Imagem atual do serviço"><span>Imagem atual</span></label>` : '<p class="catalog-edit-no-image">Este serviço não tem imagem.</p>'}
+              <label class="image-drop-zone catalog-edit-drop-zone" for="edit-service-image">
+                <input id="edit-service-image" name="imagem" type="file" accept="image/jpeg,image/png,image/webp,image/gif">
+                <img class="image-drop-preview" id="edit-image-preview" alt="Prévia da nova imagem" hidden>
+                <span class="image-drop-copy"><strong>Arraste uma nova imagem</strong><span>ou clique para escolher no computador</span><small>JPG, PNG, WebP ou GIF · até 5 MB</small></span>
+              </label>
+              <label class="catalog-remove-image"><input type="checkbox" name="remover_imagem" value="true"> Remover a imagem atual</label>
+            </div>`;
+          const editImageInput = editFields.querySelector("#edit-service-image");
+          const editImageDropZone = editFields.querySelector(".catalog-edit-drop-zone");
+          const editImagePreview = editFields.querySelector("#edit-image-preview");
+          editImageInput.addEventListener("change", () => previewEditImage(editImageInput.files[0], editImageDropZone, editImagePreview));
+          ["dragenter", "dragover"].forEach(eventName => editImageDropZone.addEventListener(eventName, event => {
+            event.preventDefault();
+            editImageDropZone.classList.add("is-dragging");
+          }));
+          ["dragleave", "drop"].forEach(eventName => editImageDropZone.addEventListener(eventName, event => {
+            event.preventDefault();
+            editImageDropZone.classList.remove("is-dragging");
+          }));
+          editImageDropZone.addEventListener("drop", event => {
+            const [file] = event.dataTransfer.files;
+            if (!file) return;
+            const transfer = new DataTransfer();
+            transfer.items.add(file);
+            editImageInput.files = transfer.files;
+            previewEditImage(file, editImageDropZone, editImagePreview);
+          });
+        }
+
+        editDialog.showModal();
+        editFields.querySelector("input:not([type=checkbox]), select")?.focus();
+      }
+
+      let editPreviewUrl = null;
+      function previewEditImage(file, dropZone, preview) {
+        if (!file) return;
+        if (!["image/jpeg", "image/png", "image/webp", "image/gif"].includes(file.type) || file.size > 5 * 1024 * 1024) {
+          editFields.querySelector("#edit-service-image").value = "";
+          editMessage.className = "form-message error";
+          editMessage.textContent = file.size > 5 * 1024 * 1024
+            ? "A imagem deve ter no máximo 5 MB."
+            : "Escolha uma imagem JPG, PNG, WebP ou GIF.";
+          return;
+        }
+        if (editPreviewUrl) URL.revokeObjectURL(editPreviewUrl);
+        editPreviewUrl = URL.createObjectURL(file);
+        preview.src = editPreviewUrl;
+        preview.hidden = false;
+        dropZone.classList.add("has-image");
+        editMessage.className = "form-message";
+        editMessage.textContent = "";
+      }
+
+      function closeEditDialog() {
+        editDialog.close();
+        if (editPreviewUrl) URL.revokeObjectURL(editPreviewUrl);
+        editPreviewUrl = null;
+        editing = null;
+      }
+
+      document.querySelector("#close-catalog-edit").addEventListener("click", closeEditDialog);
+      document.querySelector("#cancel-catalog-edit").addEventListener("click", closeEditDialog);
+      editDialog.addEventListener("click", event => {
+        if (event.target === editDialog) closeEditDialog();
+      });
+
+      editForm.addEventListener("submit", async event => {
+        event.preventDefault();
+        if (!editing) return;
+        const submitButton = editForm.querySelector("button[type='submit']");
+        submitButton.disabled = true;
+        editMessage.className = "form-message";
+        editMessage.textContent = "";
+        try {
+          const data = new FormData(editForm);
+          let endpoint;
+          let body;
+          if (editing.type === "category") {
+            endpoint = `/categorias/${editing.id}`;
+            body = JSON.stringify({ nome_categoria: data.get("nome_categoria") });
+          } else if (editing.type === "professional") {
+            const ids_servico = data.getAll("ids_servico");
+            if (!ids_servico.length) throw new Error("Selecione ao menos um serviço realizado pela profissional.");
+            endpoint = `/profissionais/${editing.id}`;
+            body = JSON.stringify({
+              nome: data.get("nome"),
+              telefone: data.get("telefone"),
+              email: data.get("email"),
+              ...(data.get("senha") ? { senha: data.get("senha") } : {}),
+              ids_servico
+            });
+          } else {
+            endpoint = `/servicos/${editing.id}`;
+            const uploadedFile = data.get("imagem");
+            if (uploadedFile && uploadedFile.size > 0) {
+              body = data;
+              body.delete("remover_imagem");
+            } else {
+              body = JSON.stringify({
+                nome_servico: data.get("nome_servico"),
+                id_categoria: data.get("id_categoria"),
+                preco: data.get("preco"),
+                duracao_minutos: data.get("duracao_minutos"),
+                descricao: data.get("descricao"),
+                ...(data.get("remover_imagem") ? { imagem_url: "" } : {})
+              });
+            }
+          }
+          await request(endpoint, { method: "PUT", body });
+          const updatedType = editing.type;
+          closeEditDialog();
+          await loadCatalog();
+          showMessage(updatedType === "category" ? "Categoria atualizada."
+            : updatedType === "professional" ? "Profissional atualizada."
+              : "Serviço atualizado.");
+        } catch (error) {
+          editMessage.className = "form-message error";
+          editMessage.textContent = error.message;
+        } finally {
+          submitButton.disabled = false;
+        }
+      });
+
+      document.querySelector(".catalog-admin-grid").addEventListener("click", async event => {
+        const button = event.target.closest("button[data-action]");
+        if (!button) return;
+        const action = button.dataset.action;
+        const id = Number(button.dataset.id);
+        const professional = catalog.profissionais.find(item => Number(item.id_profissional) === id);
+        const service = catalog.servicos.find(item => Number(item.id_servico) === id);
+        const category = catalog.categorias.find(item => Number(item.id_categoria) === id);
+        try {
+          if (action === "edit-category" && category) {
+            openEditDialog("category", category);
+            return;
+          } else if (action === "toggle-professional" && professional) {
+            const activating = button.dataset.active !== "true";
+            if (!activating && !window.confirm(`Desativar ${professional.nome}? Ela deixará de aparecer nas opções de agendamento.`)) return;
+            button.disabled = true;
+            await request(`/profissionais/${id}`, { method: "PUT", body: JSON.stringify({ ativo: button.dataset.active !== "true" }) });
+            await loadCatalog();
+            showMessage(activating ? "Profissional ativada." : "Profissional desativada.");
+            return;
+          } else if (action === "edit-professional" && professional) {
+            openEditDialog("professional", professional);
+            return;
+          } else if (action === "toggle-service" && service) {
+            const activating = button.dataset.active !== "true";
+            if (!activating && !window.confirm(`Desativar "${service.nome_servico}"? Ele deixará de aparecer no catálogo e nos agendamentos.`)) return;
+            button.disabled = true;
+            await request(`/servicos/${id}`, { method: "PUT", body: JSON.stringify({ ativo: button.dataset.active !== "true" }) });
+            await loadCatalog();
+            showMessage(activating ? "Serviço ativado." : "Serviço desativado.");
+            return;
+          } else if (action === "edit-service" && service) {
+            openEditDialog("service", service);
+            return;
+          }
+        } catch (error) { showMessage(error.message, true); }
+        finally {
+          if (button.isConnected) button.disabled = false;
+        }
+      });
+
+      document.querySelector("#admin-logout").addEventListener("click", async () => {
+        await fetch("/admin/logout", { method: "POST" });
+        window.location.assign("/admin.html");
+      });
+
+      const menuButton = document.querySelector(".menu-toggle");
+      const nav = document.querySelector(".nav");
+      menuButton.addEventListener("click", () => {
+        const isOpen = menuButton.getAttribute("aria-expanded") === "true";
+        menuButton.setAttribute("aria-expanded", String(!isOpen));
+        nav.style.display = isOpen ? "none" : "flex";
+        nav.style.flexDirection = "column";
+        nav.style.position = "absolute";
+        nav.style.right = "18px";
+        nav.style.top = "70px";
+        nav.style.background = "#fffdf8";
+        nav.style.padding = "18px";
+        nav.style.borderRadius = "12px";
+        nav.style.boxShadow = "0 12px 30px rgba(18, 61, 66, .14)";
+      });
+
+      loadCatalog().catch(error => showMessage(error.message, true));
+    </script>
+  </body>
+</html>
