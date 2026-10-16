@@ -1,3 +1,4 @@
+// Cria reservas e suas relações com cliente, profissional e serviço.
 exports.up = function(knex) {
   // Liga cliente, profissional e serviço ao intervalo e status da reserva.
   return knex.schema.createTable('AGENDAMENTO', function(table) {

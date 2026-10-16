@@ -1,3 +1,4 @@
+// Insere serviços iniciais de forma segura para bases existentes.
 const procedimentos = [
   { nome_servico: 'Corte de cabelo', preco: 80, duracao_minutos: 60 },
   { nome_servico: 'Escova e finalizacao', preco: 70, duracao_minutos: 60 },

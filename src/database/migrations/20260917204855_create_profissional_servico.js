@@ -1,3 +1,4 @@
+// Registra quais serviços cada profissional pode realizar.
 exports.up = function(knex) {
   // Associa profissionais aos serviços que podem realizar.
   return knex.schema.createTable('PROFISSIONAL_SERVICO', function(table) {

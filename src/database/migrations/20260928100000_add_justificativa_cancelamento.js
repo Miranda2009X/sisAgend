@@ -1,3 +1,4 @@
+// Adiciona o campo que registra o motivo de cancelamento.
 exports.up = function(knex) {
   // Permite registrar o motivo informado quando um agendamento é cancelado.
   return knex.schema.alterTable('AGENDAMENTO', function(table) {

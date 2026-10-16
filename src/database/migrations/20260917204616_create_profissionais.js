@@ -1,3 +1,4 @@
+// Cria o cadastro básico das profissionais do salão.
 exports.up = function(knex) {
   // O campo ativo permite desativar profissionais sem apagar seus agendamentos.
   return knex.schema.createTable('PROFISSIONAL', function(table) {

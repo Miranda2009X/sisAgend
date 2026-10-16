@@ -1,3 +1,4 @@
+// Atualiza créditos remotos para imagens mantidas localmente no site.
 const imagePaths = [
   {
     remoteUrl: 'https://upload.wikimedia.org/wikipedia/commons/6/66/Fine_Braids%2C_Dimma_%2813307706094%29.jpg',

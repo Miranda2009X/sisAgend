@@ -1,3 +1,4 @@
+// Calcula horários livres respeitando expediente, duração e conflitos.
 const MINUTE_START = 8 * 60;
 const MINUTE_END = 18 * 60;
 

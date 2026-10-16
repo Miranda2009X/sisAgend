@@ -1,3 +1,4 @@
+// Define os serviços, preços e durações usados nos agendamentos.
 exports.up = function(knex) {
   // Cada serviço informa sua categoria, preço e duração usada nos agendamentos.
   return knex.schema.createTable('SERVICO', function(table) {

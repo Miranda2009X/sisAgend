@@ -1,3 +1,4 @@
+// Centraliza a configuração de Knex para desenvolvimento e migrações.
 const path = require('path');
 
 module.exports = {

@@ -1,3 +1,4 @@
+// Acrescenta descrição e imagem aos serviços já cadastrados.
 exports.up = async function(knex) {
   await knex.schema.alterTable('SERVICO', function(table) {
     table.text('descricao').nullable();

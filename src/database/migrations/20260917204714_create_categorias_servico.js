@@ -1,3 +1,4 @@
+// Cria categorias únicas para organizar o catálogo.
 exports.up = function(knex) {
   // Impede categorias duplicadas no catálogo de serviços.
   return knex.schema.createTable('CATEGORIA_SERVICO', function(table) {

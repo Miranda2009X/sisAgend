@@ -1,3 +1,4 @@
+// Registra erros internos e retorna uma resposta segura para a API.
 module.exports = function erroInterno(res, error) {
   // Registra o detalhe no servidor sem expor informações internas ao cliente.
   console.error('[SISAGEND] Erro:', error);

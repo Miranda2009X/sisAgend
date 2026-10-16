@@ -1,3 +1,4 @@
+// Cria a conexão SQLite compartilhada pelos controladores e migrações.
 const knex = require('knex');
 const path = require('path');
 

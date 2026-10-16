@@ -1,3 +1,4 @@
+// Cria a tabela de contas de cliente com credenciais protegidas.
 exports.up = function(knex) {
   // Armazena os dados do cliente e o hash da senha, com e-mail único.
   return knex.schema.createTable('CLIENTE', function(table) {

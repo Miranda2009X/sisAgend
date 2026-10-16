@@ -1,3 +1,4 @@
+// Preserva no agendamento o preço praticado no momento da reserva.
 exports.up = async function(knex) {
   // O snapshot evita que a edição do preço no catálogo altere relatórios antigos.
   await knex.schema.alterTable('AGENDAMENTO', function(table) {

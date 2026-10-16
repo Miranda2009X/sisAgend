@@ -1,3 +1,4 @@
+// Permite desativar contas sem apagar seu histórico de reservas.
 exports.up = function(knex) {
   // Desativação lógica mantém as chaves usadas pelos agendamentos históricos.
   return knex.schema.alterTable('CLIENTE', function(table) {

@@ -1,3 +1,4 @@
+// Confirma as regras de expediente, duração e conflitos de agenda.
 const assert = require('node:assert/strict');
 const test = require('node:test');
 const { horariosDisponiveis } = require('../src/utils/disponibilidade');

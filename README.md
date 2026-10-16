@@ -3,7 +3,7 @@
 Sistema de agendamento para o salão Berenice Braids.
 
 - **Backend:** Node.js + Express 5 + Knex + SQLite
-- **Front-end:** HTML/CSS/JS puro em `htmlTrabalho/`, servido pelo próprio Express
+- **Front-end:** HTML/CSS/JS puro em `public/`, servido pelo próprio Express
 
 ## Como executar
 
@@ -21,12 +21,14 @@ Abra http://localhost:3001
 A tela de profissionais, o catálogo administrativo e as operações de gerenciamento exigem autenticação administrativa. Configure no arquivo `.env`:
 
 ```env
-ADMIN_EMAIL=admin@exemplo.com
+ADMIN_EMAIL=adm@gmail.com
 ADMIN_PASSWORD_HASH=hash-bcrypt-da-senha
 JWT_SECRET=use-um-segredo-aleatorio-com-pelo-menos-32-caracteres
 ```
 
-Gere o hash da senha administrativa com `node -e "require('bcrypt').hash(process.argv[1], 12).then(console.log)" "sua-senha-forte"` e o segredo com `openssl rand -hex 32`. `ADMIN_PASSWORD` sem hash ainda é aceito para compatibilidade, mas o recomendado é configurar `ADMIN_PASSWORD_HASH`. Acesse `/admin.html` para entrar; a administração inclui `/profissionais.html`, `/catalogo-admin.html`, `/clientes-admin.html` e `/relatorios.html`. Clientes podem criar uma conta ou entrar em `/cadastro.html`; o agendamento e a consulta das próprias reservas exigem sessão de cliente.
+Gere o hash da senha administrativa com `node -e "require('bcrypt').hash(process.argv[1], 12).then(console.log)" "sua-senha-forte"` e o segredo com `openssl rand -hex 32`. `ADMIN_PASSWORD` sem hash ainda é aceito para compatibilidade, mas o recomendado é configurar `ADMIN_PASSWORD_HASH`. O administrador pode entrar pelo formulário compartilhado em `/cadastro.html` ou pela tela `/admin.html`; a administração inclui `/profissionais.html`, `/catalogo-admin.html`, `/clientes-admin.html` e `/relatorios.html`. No catálogo, imagens de serviço podem ser selecionadas ou arrastadas para o campo de imagem (JPG, PNG, WebP ou GIF, até 5 MB). Clientes podem criar uma conta ou entrar em `/cadastro.html`; o agendamento e a consulta das próprias reservas exigem sessão de cliente.
+
+No catálogo, o administrador também cria o e-mail e a senha inicial de acesso de cada profissional. A profissional entra pelo formulário compartilhado em `/cadastro.html`, usando seu próprio e-mail e senha; as credenciais ficam vinculadas ao perfil e a senha é armazenada com bcrypt. Perfis antigos precisam receber e-mail e senha pelo catálogo antes de poderem entrar. A área `/profissional.html` mostra somente a agenda da profissional autenticada e permite confirmar, cancelar com motivo, reagendar e concluir seus próprios atendimentos.
 
 O banco padrão fica em `src/database/database.sqlite`. Defina `SISAGEND_DB_PATH` para usar outro arquivo SQLite. Para aplicar as migrações pendentes a um banco existente, preservando os dados:
 
@@ -39,7 +41,10 @@ npx knex migrate:latest
 | Método | Rota                          | Função                                   |
 | ------ | ----------------------------- | ---------------------------------------- |
 | POST   | `/clientes`                   | Cadastra cliente (senha com bcrypt)      |
-| POST   | `/login`                      | Autentica cliente por e-mail e senha     |
+| POST   | `/login`                      | Autentica cliente, profissional ou administrador |
+| GET    | `/profissional/agendamentos?data=AAAA-MM-DD` | Agenda do dia (somente a profissional autenticada) |
+| PUT    | `/profissional/agendamentos/:id/status` | Confirma, cancela ou conclui atendimento próprio |
+| PUT    | `/profissional/agendamentos/:id/reagendar` | Remarca atendimento próprio |
 | GET/PUT | `/clientes/me`                | Consulta e atualiza a própria conta      |
 | GET    | `/clientes`                   | Lista clientes ativos (somente administração) |
 | PUT/DELETE | `/clientes/:id`             | Atualiza ou desativa cliente (admin)     |
