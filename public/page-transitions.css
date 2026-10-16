@@ -1,3 +1,4 @@
+/* Transições entre páginas com suporte à preferência por movimento reduzido. */
 @view-transition {
   navigation: auto;
 }
