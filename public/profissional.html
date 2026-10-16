@@ -1,0 +1,268 @@
+<!doctype html>
+<!-- Agenda individual com ações restritas à profissional autenticada. -->
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Minha agenda | Berenice Braids</title>
+    <link rel="stylesheet" href="css.css">
+    <style>
+      .professional-agenda { max-width: 1040px; }
+      .professional-heading { display: flex; align-items: end; justify-content: space-between; gap: 24px; margin-bottom: 28px; }
+      .professional-heading h1 { margin: 8px 0; }
+      .professional-heading p { margin: 0; color: #637275; }
+      .agenda-date { display: flex; align-items: center; gap: 10px; }
+      .agenda-date input { min-height: 44px; padding: 8px 12px; border: 1px solid #d6dfda; border-radius: 10px; color: #173f42; font: inherit; }
+      .professional-appointments { display: grid; gap: 14px; }
+      .professional-appointment { display: grid; grid-template-columns: minmax(125px, .7fr) minmax(0, 2fr) auto; align-items: center; gap: 18px; padding: 20px; border: 1px solid #e1e8e3; border-radius: 16px; background: #fff; }
+      .professional-time { color: #174d50; font-size: 1.15rem; font-weight: 700; white-space: nowrap; }
+      .professional-details strong, .professional-details span { display: block; }
+      .professional-details span, .professional-details small { margin-top: 5px; color: #637275; }
+      .professional-status { display: inline-flex; margin-top: 8px; padding: 5px 10px; border-radius: 99px; background: #edf2ee; color: #526462; font-size: .82rem; font-weight: 700; }
+      .professional-status[data-status="Pendente"] { background: #fff2d7; color: #795810; }
+      .professional-status[data-status="Confirmado"] { background: #e0f1ea; color: #176343; }
+      .professional-status[data-status="Cancelado"] { background: #fce9e6; color: #963e33; }
+      .professional-actions { display: flex; flex-wrap: wrap; justify-content: end; gap: 8px; }
+      .professional-actions button { min-height: 38px; padding: 8px 12px; border: 1px solid #d6dfda; border-radius: 9px; background: #fff; color: #174d50; font: inherit; cursor: pointer; }
+      .professional-actions button:hover { background: #f1f6f2; }
+      .professional-actions .confirm-action { border-color: #174d50; background: #174d50; color: #fff; }
+      .professional-actions .cancel-action { color: #963e33; }
+      .professional-actions button:disabled { cursor: wait; opacity: .6; }
+      .professional-empty { padding: 30px; border-radius: 14px; background: #fff; color: #637275; text-align: center; }
+      .professional-dialog { width: min(460px, calc(100% - 32px)); padding: 24px; border: 0; border-radius: 16px; box-shadow: 0 20px 60px #123d4226; }
+      .professional-dialog::backdrop { background: #142b2cb3; }
+      .professional-dialog h2 { margin-top: 0; color: #174d50; }
+      .professional-dialog label { display: block; margin: 14px 0 6px; font-weight: 600; }
+      .professional-dialog input, .professional-dialog textarea { box-sizing: border-box; width: 100%; padding: 11px; border: 1px solid #d6dfda; border-radius: 9px; font: inherit; }
+      .professional-dialog-actions { display: flex; justify-content: end; gap: 10px; margin-top: 20px; }
+      .professional-dialog-actions button { min-height: 40px; padding: 8px 14px; border: 1px solid #d6dfda; border-radius: 9px; background: white; font: inherit; cursor: pointer; }
+      .professional-dialog-actions button[type="submit"] { border-color: #174d50; background: #174d50; color: white; }
+      @media (max-width: 700px) {
+        .professional-heading { align-items: start; flex-direction: column; }
+        .professional-appointment { grid-template-columns: 1fr; gap: 10px; }
+        .professional-actions { justify-content: start; }
+      }
+    </style>
+  </head>
+  <body>
+    <header class="shell topbar">
+      <a class="brand" href="cliente.html" aria-label="Berenice Braids início">
+        <span class="brand-mark">B</span><span>Berenice Braids</span>
+      </a>
+      <nav class="nav" aria-label="Navegação da profissional">
+        <span id="professional-name" aria-live="polite">Minha agenda</span>
+        <button class="button button-quiet" id="professional-logout" type="button">Sair</button>
+      </nav>
+      <button class="menu-toggle" type="button" aria-label="Abrir menu" aria-expanded="false">☰</button>
+    </header>
+
+    <main>
+      <section class="section">
+        <div class="shell professional-agenda">
+          <div class="professional-heading">
+            <div>
+              <span class="eyebrow">Área profissional</span>
+              <h1>Minha agenda</h1>
+              <p>Consulte seus atendimentos e atualize cada horário.</p>
+            </div>
+            <label class="agenda-date">Dia <input id="agenda-date" type="date"></label>
+          </div>
+          <p class="form-message" id="agenda-message" role="status" aria-live="polite"></p>
+          <div class="professional-appointments" id="appointments" aria-live="polite">
+            <p class="professional-empty">Carregando seus atendimentos...</p>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <dialog class="professional-dialog" id="appointment-dialog">
+      <form id="appointment-form">
+        <h2 id="dialog-title"></h2>
+        <p id="dialog-description"></p>
+        <label id="dialog-field-label" for="dialog-field"></label>
+        <textarea id="dialog-field" rows="3" maxlength="500" required hidden></textarea>
+        <input id="reschedule-field" type="datetime-local" step="3600" required hidden>
+        <p class="form-message" id="dialog-message" role="alert"></p>
+        <div class="professional-dialog-actions">
+          <button id="dialog-close" type="button">Voltar</button>
+          <button type="submit">Confirmar</button>
+        </div>
+      </form>
+    </dialog>
+
+    <script>
+      const appointmentsList = document.querySelector("#appointments");
+      const agendaDate = document.querySelector("#agenda-date");
+      const agendaMessage = document.querySelector("#agenda-message");
+      const dialog = document.querySelector("#appointment-dialog");
+      const appointmentForm = document.querySelector("#appointment-form");
+      const dialogField = document.querySelector("#dialog-field");
+      const rescheduleField = document.querySelector("#reschedule-field");
+      const dialogMessage = document.querySelector("#dialog-message");
+      let selectedAction = null;
+
+      function dateValue(date = new Date()) {
+        return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+      }
+
+      function escapeHtml(value) {
+        return String(value ?? "").replace(/[&<>"']/g, character => ({
+          "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
+        })[character]);
+      }
+
+      function displayTime(value) {
+        return new Date(value).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+      }
+
+      async function loadAppointments() {
+        agendaMessage.className = "form-message";
+        agendaMessage.textContent = "";
+        appointmentsList.innerHTML = '<p class="professional-empty">Carregando seus atendimentos...</p>';
+        try {
+          const response = await fetch(`/profissional/agendamentos?data=${encodeURIComponent(agendaDate.value)}`, { cache: "no-store" });
+          const result = await response.json();
+          if (response.status === 401) {
+            window.location.assign("/cadastro.html?next=%2Fprofissional.html");
+            return;
+          }
+          if (!response.ok) throw new Error(result.error || "Não foi possível carregar a agenda.");
+          document.querySelector("#professional-name").textContent = result.profissional.nome;
+          const appointments = result.agendamentos;
+          appointmentsList.innerHTML = appointments.length ? appointments.map(appointment => `
+            <article class="professional-appointment">
+              <div>
+                <div class="professional-time">${displayTime(appointment.data_hora_inicio)}–${displayTime(appointment.data_hora_fim)}</div>
+                <span class="professional-status" data-status="${escapeHtml(appointment.status)}">${escapeHtml(appointment.status)}</span>
+              </div>
+              <div class="professional-details">
+                <strong>${escapeHtml(appointment.cliente_nome)}</strong>
+                <span>${escapeHtml(appointment.nome_servico)}</span>
+                <small>${escapeHtml(appointment.cliente_telefone || "")}</small>
+              </div>
+              <div class="professional-actions">
+                ${appointment.status === "Pendente" ? `<button class="confirm-action" data-action="Confirmado" data-id="${appointment.id_agendamento}" type="button">Confirmar</button>` : ""}
+                ${appointment.status === "Confirmado" ? `<button class="confirm-action" data-action="Concluido" data-id="${appointment.id_agendamento}" type="button">Concluir atendimento</button>` : ""}
+                ${["Pendente", "Confirmado"].includes(appointment.status) ? `
+                  <button data-action="reagendar" data-id="${appointment.id_agendamento}" type="button">Reagendar</button>
+                  <button class="cancel-action" data-action="Cancelado" data-id="${appointment.id_agendamento}" type="button">Cancelar</button>` : ""}
+              </div>
+            </article>
+          `).join("") : '<p class="professional-empty">Você não tem atendimentos para este dia.</p>';
+        } catch (error) {
+          appointmentsList.innerHTML = '<p class="professional-empty">Não foi possível carregar seus atendimentos.</p>';
+          agendaMessage.className = "form-message error";
+          agendaMessage.textContent = error.message;
+        }
+      }
+
+      function openAction(button) {
+        selectedAction = { id: button.dataset.id, action: button.dataset.action };
+        dialogMessage.textContent = "";
+        dialogMessage.className = "form-message";
+        dialogField.hidden = selectedAction.action !== "Cancelado";
+        dialogField.required = selectedAction.action === "Cancelado";
+        rescheduleField.hidden = selectedAction.action !== "reagendar";
+        rescheduleField.required = selectedAction.action === "reagendar";
+        dialogField.value = "";
+        rescheduleField.value = "";
+        if (selectedAction.action === "Cancelado") {
+          document.querySelector("#dialog-title").textContent = "Cancelar atendimento";
+          document.querySelector("#dialog-description").textContent = "Informe o motivo para registrar o cancelamento.";
+          document.querySelector("#dialog-field-label").textContent = "Motivo do cancelamento";
+          dialogField.hidden = false;
+          dialogField.focus();
+        } else {
+          document.querySelector("#dialog-title").textContent = "Reagendar atendimento";
+          document.querySelector("#dialog-description").textContent = "Escolha uma nova data e horário. O sistema verificará o expediente e possíveis conflitos.";
+          document.querySelector("#dialog-field-label").textContent = "Nova data e horário";
+          rescheduleField.hidden = false;
+          const earliest = new Date();
+          earliest.setMinutes(0, 0, 0);
+          if (earliest.getTime() <= Date.now()) earliest.setHours(earliest.getHours() + 1);
+          rescheduleField.min = `${dateValue(earliest)}T${String(earliest.getHours()).padStart(2, "0")}:00`;
+          rescheduleField.focus();
+        }
+        dialog.showModal();
+      }
+
+      appointmentsList.addEventListener("click", async event => {
+        const button = event.target.closest("button[data-action]");
+        if (!button) return;
+        if (["Cancelado", "reagendar"].includes(button.dataset.action)) {
+          openAction(button);
+          return;
+        }
+        button.disabled = true;
+        try {
+          const response = await fetch(`/profissional/agendamentos/${button.dataset.id}/status`, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ status: button.dataset.action })
+          });
+          const result = await response.json();
+          if (!response.ok) throw new Error(result.error || "Não foi possível atualizar o atendimento.");
+          await loadAppointments();
+        } catch (error) {
+          agendaMessage.className = "form-message error";
+          agendaMessage.textContent = error.message;
+          button.disabled = false;
+        }
+      });
+
+      appointmentForm.addEventListener("submit", async event => {
+        event.preventDefault();
+        if (!selectedAction) return;
+        const submitButton = appointmentForm.querySelector("button[type='submit']");
+        submitButton.disabled = true;
+        dialogMessage.textContent = "";
+        try {
+          const isRescheduling = selectedAction.action === "reagendar";
+          const response = await fetch(
+            `/profissional/agendamentos/${selectedAction.id}/${isRescheduling ? "reagendar" : "status"}`,
+            {
+              method: "PUT",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(isRescheduling
+                ? { data_hora_inicio: rescheduleField.value }
+                : { status: "Cancelado", justificativa_cancelamento: dialogField.value })
+            }
+          );
+          const result = await response.json();
+          if (!response.ok) throw new Error(result.error || "Não foi possível atualizar o atendimento.");
+          dialog.close();
+          await loadAppointments();
+        } catch (error) {
+          dialogMessage.className = "form-message error";
+          dialogMessage.textContent = error.message;
+        } finally {
+          submitButton.disabled = false;
+        }
+      });
+
+      document.querySelector("#dialog-close").addEventListener("click", () => dialog.close());
+      agendaDate.value = dateValue();
+      agendaDate.addEventListener("change", loadAppointments);
+      document.querySelector("#professional-logout").addEventListener("click", async () => {
+        await fetch("/profissional/logout", { method: "POST" });
+        window.location.assign("/cadastro.html?next=%2Fprofissional.html");
+      });
+      document.querySelector(".menu-toggle").addEventListener("click", event => {
+        const button = event.currentTarget;
+        const nav = document.querySelector(".nav");
+        const isOpen = button.getAttribute("aria-expanded") === "true";
+        button.setAttribute("aria-expanded", String(!isOpen));
+        nav.style.display = isOpen ? "none" : "flex";
+        nav.style.flexDirection = "column";
+        nav.style.position = "absolute";
+        nav.style.right = "18px";
+        nav.style.top = "70px";
+        nav.style.background = "#fffdf8";
+        nav.style.padding = "18px";
+        nav.style.borderRadius = "12px";
+        nav.style.boxShadow = "0 12px 30px rgba(18, 61, 66, .14)";
+      });
+      loadAppointments();
+    </script>
+  </body>
+</html>
