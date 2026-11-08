@@ -61,6 +61,7 @@ routes.post('/profissional/logout', AuthController.logoutProfessional);
 routes.get('/cliente/sessao', AuthController.clientSession);
 routes.get('/clientes/me', AuthController.requireClient, (req, res) => res.json(req.client));
 routes.get('/profissional/sessao', AuthController.requireProfessional, (req, res) => res.json(req.professional));
+routes.put('/profissional/minha-senha', AuthController.requireProfessional, AuthController.alterarMinhaSenha);
 routes.get('/profissional/agendamentos', AuthController.requireProfessional, AgendamentoController.listarDaProfissional);
 routes.put('/profissional/agendamentos/:id/status', AuthController.requireProfessional, AgendamentoController.atualizarStatusDaProfissional);
 routes.put('/profissional/agendamentos/:id/reagendar', AuthController.requireProfessional, AgendamentoController.reagendarDaProfissional);

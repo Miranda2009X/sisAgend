@@ -192,18 +192,15 @@ function tokenSubjectFromToken(token) {
 async function authenticateAdmin(req, res) {
   const { email, senha } = req.body || {};
   const configuredEmail = process.env.ADMIN_EMAIL;
-  const configuredPassword = process.env.ADMIN_PASSWORD;
   const configuredPasswordHash = process.env.ADMIN_PASSWORD_HASH;
   const secret = getAdminSecret();
 
-  if (!configuredEmail || (!configuredPassword && !configuredPasswordHash) || !secret) {
+  if (!configuredEmail || !configuredPasswordHash || !secret) {
     return res.status(503).json({ error: 'A autenticação administrativa ainda não foi configurada.' });
   }
 
   const emailConfere = secureCompare(String(email || '').trim().toLowerCase(), configuredEmail.trim().toLowerCase());
-  const senhaConfere = configuredPasswordHash
-    ? await bcrypt.compare(String(senha || ''), configuredPasswordHash)
-    : secureCompare(String(senha || ''), configuredPassword);
+  const senhaConfere = await bcrypt.compare(String(senha || ''), configuredPasswordHash);
   if (!emailConfere || !senhaConfere) {
     return res.status(401).json({ error: 'E-mail ou senha incorretos.' });
   }
@@ -271,6 +268,34 @@ module.exports = {
           telefone: cliente.telefone
         }
       });
+    } catch (error) {
+      return erroInterno(res, error);
+    }
+  },
+
+  async alterarMinhaSenha(req, res) {
+    try {
+      const { senha_atual, nova_senha } = req.body || {};
+      if (typeof senha_atual !== 'string' || typeof nova_senha !== 'string') {
+        return res.status(400).json({ error: 'Informe sua senha atual e a nova senha.' });
+      }
+      if (nova_senha.length < 6) {
+        return res.status(400).json({ error: 'A nova senha deve ter pelo menos 6 caracteres.' });
+      }
+
+      const professional = await db('PROFISSIONAL')
+        .select('senha_hash')
+        .where({ id_professional: req.professional.id_profissional, ativo: true })
+        .first();
+      if (!professional?.senha_hash || !await bcrypt.compare(senha_atual, professional.senha_hash)) {
+        return res.status(400).json({ error: 'A senha atual está incorreta.' });
+      }
+
+      const senha_hash = await bcrypt.hash(nova_senha, 10);
+      await db('PROFISSIONAL')
+        .where({ id_professional: req.professional.id_profissional, ativo: true })
+        .update({ senha_hash });
+      return res.json({ message: 'Senha alterada com sucesso.' });
     } catch (error) {
       return erroInterno(res, error);
     }

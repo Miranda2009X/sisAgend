@@ -78,7 +78,10 @@ module.exports = {
     try {
       const [categorias, profissionais, servicos, profissionalServicos] = await Promise.all([
         db('CATEGORIA_SERVICO').select('id_categoria', 'nome_categoria').orderBy('nome_categoria'),
-        db('PROFISSIONAL').select('id_professional as id_profissional', 'nome', 'telefone', 'email', 'ativo').orderBy('nome'),
+        db('PROFISSIONAL')
+          .select('id_professional as id_profissional', 'nome', 'telefone', 'email', 'ativo')
+          .select(db.raw("CASE WHEN senha_hash IS NOT NULL AND length(senha_hash) > 0 THEN 1 ELSE 0 END AS senha_configurada"))
+          .orderBy('nome'),
         db('SERVICO')
           .join('CATEGORIA_SERVICO', 'SERVICO.id_categoria', '=', 'CATEGORIA_SERVICO.id_categoria')
           .select('SERVICO.*', 'CATEGORIA_SERVICO.nome_categoria')

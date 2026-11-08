@@ -242,9 +242,15 @@
         professionalList.innerHTML = catalog.profissionais.length ? catalog.profissionais.map(professional => {
           const associated = catalog.profissionalServicos.filter(link => Number(link.id_profissional) === Number(professional.id_profissional));
           const names = associated.map(link => catalog.servicos.find(service => Number(service.id_servico) === Number(link.id_servico))?.nome_servico).filter(Boolean);
+          const passwordStatus = professional.senha_configurada == null
+            ? "não foi possível verificar; reinicie o servidor"
+            : Number(professional.senha_configurada)
+              ? "configurada (não exibida por segurança)"
+              : "não configurada";
           return `<article class="catalog-admin-item catalog-admin-item-stacked" data-active="${Boolean(Number(professional.ativo))}">
             <div><strong>${escapeHtml(professional.nome)}</strong><small>${escapeHtml(professional.telefone)}</small>
               <small>Acesso: ${escapeHtml(professional.email || "não configurado")}</small>
+              <small>Senha: ${passwordStatus}</small>
               <small>Serviços: ${escapeHtml(names.join(", ") || "Nenhum associado")}</small></div>
             <div class="catalog-admin-actions">
               <button class="appointment-action" type="button" data-action="edit-professional" data-id="${professional.id_profissional}">Editar</button>
@@ -298,7 +304,7 @@
           await request("/profissionais", { method: "POST", body: JSON.stringify(payload) });
           form.reset();
           await loadCatalog();
-          showMessage("Profissional adicionada.");
+          showMessage("Profissional adicionada. A senha foi salva e não é exibida por segurança.");
         } catch (error) { showMessage(error.message, true); }
       });
 
@@ -409,6 +415,7 @@
             <div class="catalog-field">
               <label for="edit-professional-password">Nova senha <span>(opcional)</span></label>
               <input id="edit-professional-password" name="senha" type="password" minlength="6" autocomplete="new-password" placeholder="Deixe vazio para manter a senha">
+              <small>Depois de digitar, clique em “Salvar alterações” e aguarde a confirmação.</small>
             </div>
             <fieldset class="catalog-service-options">
               <legend>Serviços realizados <span>(selecione ao menos um)</span></legend>
@@ -524,12 +531,14 @@
           const data = new FormData(editForm);
           let endpoint;
           let body;
+          let professionalPasswordChanged = false;
           if (editing.type === "category") {
             endpoint = `/categorias/${editing.id}`;
             body = JSON.stringify({ nome_categoria: data.get("nome_categoria") });
           } else if (editing.type === "professional") {
             const ids_servico = data.getAll("ids_servico");
             if (!ids_servico.length) throw new Error("Selecione ao menos um serviço realizado pela profissional.");
+            professionalPasswordChanged = Boolean(data.get("senha"));
             endpoint = `/profissionais/${editing.id}`;
             body = JSON.stringify({
               nome: data.get("nome"),
@@ -560,7 +569,10 @@
           closeEditDialog();
           await loadCatalog();
           showMessage(updatedType === "category" ? "Categoria atualizada."
-            : updatedType === "professional" ? "Profissional atualizada."
+            : updatedType === "professional"
+              ? professionalPasswordChanged
+                ? "Profissional atualizada. A nova senha foi salva e não é exibida por segurança."
+                : "Profissional atualizada."
               : "Serviço atualizado.");
         } catch (error) {
           editMessage.className = "form-message error";

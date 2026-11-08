@@ -4,6 +4,7 @@ const bcrypt = require('bcrypt');
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
+const { performance } = require('node:perf_hooks');
 const knexFactory = require('knex');
 const { test } = require('node:test');
 
@@ -24,6 +25,14 @@ test('documented client and admin workflows preserve privacy and history', async
 
   try {
     await database.migrate.latest();
+    const appointmentIndexes = await database('sqlite_master')
+      .select('name')
+      .where({ type: 'index', tbl_name: 'AGENDAMENTO' });
+    const appointmentIndexNames = new Set(appointmentIndexes.map(index => index.name));
+    assert.ok(appointmentIndexNames.has('idx_agendamento_profissional_horario'));
+    assert.ok(appointmentIndexNames.has('idx_agendamento_cliente_horario'));
+    assert.ok(appointmentIndexNames.has('idx_agendamento_inicio'));
+
     const [categoryId] = await database('CATEGORIA_SERVICO').insert({ nome_categoria: 'Tranças' });
     const [professionalId] = await database('PROFISSIONAL').insert({ nome: 'Profissional teste', telefone: '4100000000', ativo: true });
     const [serviceId] = await database('SERVICO').insert({
@@ -87,6 +96,19 @@ test('documented client and admin workflows preserve privacy and history', async
     });
     const baseUrl = `http://127.0.0.1:${server.address().port}`;
     const call = (route, options) => fetch(`${baseUrl}${route}`, options);
+    const callWithinTwoSeconds = async (route, options) => {
+      const started = performance.now();
+      const response = await call(route, options);
+      assert.ok(performance.now() - started < 2000, `${route} should respond in less than 2 seconds`);
+      return response;
+    };
+    const plaintextAdminLogin = await call('/admin/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: process.env.ADMIN_EMAIL, senha: process.env.ADMIN_PASSWORD })
+    });
+    assert.equal(plaintextAdminLogin.status, 503);
+    process.env.ADMIN_PASSWORD_HASH = await bcrypt.hash(process.env.ADMIN_PASSWORD, 4);
     const clientLogin = await call('/login', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -192,6 +214,19 @@ test('documented client and admin workflows preserve privacy and history', async
       })
     });
     assert.equal(createProfessional.status, 201);
+    const createdProfessionalRecord = await database('PROFISSIONAL')
+      .where('email', 'profissional.nova@example.test')
+      .first();
+    assert.ok(createdProfessionalRecord.senha_hash);
+    assert.equal(await bcrypt.compare('prof123', createdProfessionalRecord.senha_hash), true);
+    const initialProfessionalLogin = await call('/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: 'profissional.nova@example.test', senha: 'prof123' })
+    });
+    assert.equal(initialProfessionalLogin.status, 200);
+    assert.equal((await initialProfessionalLogin.json()).tipo, 'profissional');
+
     const duplicateAccountEmail = await call('/profissionais', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Cookie: sharedAdminCookie },
@@ -240,9 +275,19 @@ test('documented client and admin workflows preserve privacy and history', async
     assert.deepEqual(editedProfessional.ids_servico, [serviceId, unassignedServiceId]);
     const adminCatalogAfterEdit = await (await call('/admin/catalogo', { headers: { Cookie: sharedAdminCookie } })).json();
     assert.equal(adminCatalogAfterEdit.profissionais.find(professional => professional.id_profissional === createdProfessional.id_profissional).email, 'profissional.editada@example.test');
+    assert.equal(Number(adminCatalogAfterEdit.profissionais.find(
+      professional => professional.id_profissional === createdProfessional.id_profissional
+    ).senha_configurada), 1);
     const savedProfessional = await database('PROFISSIONAL').where('id_professional', createdProfessional.id_profissional).first();
     assert.notEqual(savedProfessional.senha_hash, 'nova123');
     assert.equal(await bcrypt.compare('nova123', savedProfessional.senha_hash), true);
+    const updatedProfessionalLogin = await call('/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: 'profissional.editada@example.test', senha: 'nova123' })
+    });
+    assert.equal(updatedProfessionalLogin.status, 200);
+    assert.equal((await updatedProfessionalLogin.json()).tipo, 'profissional');
     const deactivateProfessional = await call(`/profissionais/${createdProfessional.id_profissional}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json', Cookie: sharedAdminCookie },
@@ -276,6 +321,7 @@ test('documented client and admin workflows preserve privacy and history', async
     assert.equal(adminLoginPage.headers.get('location'), '/profissionais.html');
     const anonymousAdminLoginPage = await call('/admin.html');
     assert.equal(anonymousAdminLoginPage.status, 200);
+    assert.match(await anonymousAdminLoginPage.text(), /fetch\("\/login"/);
 
     const rawSchedule = await call('/agendamentos?data=2099-04-05', { headers: { Cookie: clientCookie } });
     assert.equal(rawSchedule.status, 401);
@@ -285,7 +331,7 @@ test('documented client and admin workflows preserve privacy and history', async
       id_profissional: String(professionalId),
       id_servico: String(serviceId)
     });
-    const availabilityResponse = await call(`/agendamentos/disponibilidade?${availabilityQuery}`, {
+    const availabilityResponse = await callWithinTwoSeconds(`/agendamentos/disponibilidade?${availabilityQuery}`, {
       headers: { Cookie: clientCookie }
     });
     assert.equal(availabilityResponse.status, 200);
@@ -301,7 +347,7 @@ test('documented client and admin workflows preserve privacy and history', async
     })}`, { headers: { Cookie: clientCookie } });
     assert.equal(incompatibleService.status, 400);
 
-    const booking = await call('/agendamentos', {
+    const booking = await callWithinTwoSeconds('/agendamentos', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Cookie: clientCookie },
       body: JSON.stringify({ id_profissional: professionalId, id_servico: serviceId, data_hora_inicio: '2099-04-05T11:00' })
@@ -379,6 +425,31 @@ test('documented client and admin workflows preserve privacy and history', async
     assert.equal((await call('/profissional/sessao', { headers: { Cookie: allRoleCookies } })).status, 200);
     assert.equal((await call('/admin/catalogo', { headers: { Cookie: professionalCookie } })).status, 401);
     assert.equal((await call('/profissional.html', { headers: { Cookie: professionalCookie }, redirect: 'manual' })).status, 200);
+    const incorrectCurrentPassword = await call('/profissional/minha-senha', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', Cookie: professionalCookie },
+      body: JSON.stringify({ senha_atual: 'incorreta', nova_senha: 'senhaNova123' })
+    });
+    assert.equal(incorrectCurrentPassword.status, 400);
+    const changeProfessionalPassword = await call('/profissional/minha-senha', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', Cookie: professionalCookie },
+      body: JSON.stringify({ senha_atual: 'nova123', nova_senha: 'senhaNova123' })
+    });
+    assert.equal(changeProfessionalPassword.status, 200);
+    const oldPasswordLogin = await call('/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: 'profissional.editada@example.test', senha: 'nova123' })
+    });
+    assert.equal(oldPasswordLogin.status, 401);
+    const changedPasswordLogin = await call('/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: 'profissional.editada@example.test', senha: 'senhaNova123' })
+    });
+    assert.equal(changedPasswordLogin.status, 200);
+    assert.equal((await changedPasswordLogin.json()).tipo, 'profissional');
     const anonymousProfessionalPage = await call('/profissional.html', { redirect: 'manual' });
     assert.equal(anonymousProfessionalPage.status, 302);
     assert.match(anonymousProfessionalPage.headers.get('location'), /cadastro\.html\?next=/);
@@ -406,10 +477,42 @@ test('documented client and admin workflows preserve privacy and history', async
       valor_servico: 120,
       status: 'Pendente'
     });
+    await database('AGENDAMENTO').insert({
+      id_cliente: clientId,
+      id_profissional: professionalId,
+      id_servico: serviceId,
+      data_hora_inicio: '2099-04-07T10:00',
+      data_hora_fim: '2099-04-07T11:00',
+      valor_servico: 120,
+      status: 'Pendente'
+    });
     const ownProfessionalSchedule = await call('/profissional/agendamentos?data=2099-04-06', {
       headers: { Cookie: professionalCookie }
     });
     assert.equal((await ownProfessionalSchedule.json()).agendamentos.length, 2);
+    const ownProfessionalWeek = await call('/profissional/agendamentos?inicio=2099-04-06&fim=2099-04-12', {
+      headers: { Cookie: professionalCookie }
+    });
+    assert.equal(ownProfessionalWeek.status, 200);
+    const ownProfessionalWeekResult = await ownProfessionalWeek.json();
+    assert.deepEqual(
+      [ownProfessionalWeekResult.inicio, ownProfessionalWeekResult.fim],
+      ['2099-04-06', '2099-04-12']
+    );
+    assert.equal(ownProfessionalWeekResult.agendamentos.length, 2);
+    const ownProfessionalMonth = await call('/profissional/agendamentos?mes=2099-04', {
+      headers: { Cookie: professionalCookie }
+    });
+    assert.equal(ownProfessionalMonth.status, 200);
+    const ownProfessionalMonthResult = await ownProfessionalMonth.json();
+    assert.equal(ownProfessionalMonthResult.mes, '2099-04');
+    assert.equal(ownProfessionalMonthResult.agendamentos.length, 2);
+    assert.equal((await call('/profissional/agendamentos?inicio=2099-04-06&fim=2099-04-13', {
+      headers: { Cookie: professionalCookie }
+    })).status, 400);
+    assert.equal((await call('/profissional/agendamentos?mes=2099-13', {
+      headers: { Cookie: professionalCookie }
+    })).status, 400);
     const foreignProfessionalAction = await call(`/profissional/agendamentos/${foreignAppointment.id_agendamento}/status`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json', Cookie: professionalCookie },
