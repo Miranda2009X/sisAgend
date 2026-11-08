@@ -19,7 +19,7 @@
       <nav class="nav" aria-label="Navegação principal">
         <a href="cliente.html#inicio">Início</a>
         <a href="servicos.html">Serviços</a>
-        <a href="cadastro.html">Cadastrar</a>
+        <a href="cadastro.html">Cadastrar/entrar</a>
         <a href="agendamento.html">Agendamento</a>
       </nav>
       <button class="menu-toggle" type="button" aria-label="Abrir menu" aria-expanded="false">☰</button>
@@ -31,7 +31,7 @@
           <div class="appointment-intro">
             <span class="eyebrow">Acesso restrito</span>
             <h1>Área administrativa.</h1>
-            <p>Entre com as credenciais administrativas para continuar.</p>
+            <p>Entre com a conta administrativa ou profissional para acessar sua área.</p>
           </div>
           <form class="schedule-card" id="admin-login-form">
             <div class="card-top"><h2>Entrar</h2><span class="status-dot" aria-label="Sistema online"></span></div>
@@ -84,14 +84,18 @@
         button.disabled = true;
         message.className = "form-message";
         try {
-          const response = await fetch("/admin/login", {
+          const response = await fetch("/login", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(Object.fromEntries(new FormData(form)))
           });
           const result = await response.json();
           if (!response.ok) throw new Error(result.error || "Não foi possível entrar.");
-          window.location.href = "/profissionais.html";
+          window.location.href = result.tipo === "profissional"
+            ? "/profissional.html"
+            : result.tipo === "admin"
+              ? "/profissionais.html"
+              : "/cliente.html";
         } catch (error) {
           message.className = "form-message error";
           message.textContent = error.message.includes("Failed to fetch") ? "Não foi possível conectar ao servidor." : error.message;

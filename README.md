@@ -26,7 +26,7 @@ ADMIN_PASSWORD_HASH=hash-bcrypt-da-senha
 JWT_SECRET=use-um-segredo-aleatorio-com-pelo-menos-32-caracteres
 ```
 
-Gere o hash da senha administrativa com `node -e "require('bcrypt').hash(process.argv[1], 12).then(console.log)" "sua-senha-forte"` e o segredo com `openssl rand -hex 32`. `ADMIN_PASSWORD` sem hash ainda é aceito para compatibilidade, mas o recomendado é configurar `ADMIN_PASSWORD_HASH`. O administrador pode entrar pelo formulário compartilhado em `/cadastro.html` ou pela tela `/admin.html`; a administração inclui `/profissionais.html`, `/catalogo-admin.html`, `/clientes-admin.html` e `/relatorios.html`. No catálogo, imagens de serviço podem ser selecionadas ou arrastadas para o campo de imagem (JPG, PNG, WebP ou GIF, até 5 MB). Clientes podem criar uma conta ou entrar em `/cadastro.html`; o agendamento e a consulta das próprias reservas exigem sessão de cliente.
+Gere o hash da senha administrativa com `node -e "require('bcrypt').hash(process.argv[1], 12).then(console.log)" "sua-senha-forte"` e o segredo com `openssl rand -hex 32`. Configure somente `ADMIN_PASSWORD_HASH`; senhas administrativas em texto puro não são aceitas. O administrador pode entrar pelo formulário compartilhado em `/cadastro.html` ou pela tela `/admin.html`; a administração inclui `/profissionais.html`, `/catalogo-admin.html`, `/clientes-admin.html` e `/relatorios.html`. No catálogo, imagens de serviço podem ser selecionadas ou arrastadas para o campo de imagem (JPG, PNG, WebP ou GIF, até 5 MB). Clientes podem criar uma conta ou entrar em `/cadastro.html`; o agendamento e a consulta das próprias reservas exigem sessão de cliente.
 
 No catálogo, o administrador também cria o e-mail e a senha inicial de acesso de cada profissional. A profissional entra pelo formulário compartilhado em `/cadastro.html`, usando seu próprio e-mail e senha; as credenciais ficam vinculadas ao perfil e a senha é armazenada com bcrypt. Perfis antigos precisam receber e-mail e senha pelo catálogo antes de poderem entrar. A área `/profissional.html` mostra somente a agenda da profissional autenticada e permite confirmar, cancelar com motivo, reagendar e concluir seus próprios atendimentos.
 
@@ -73,6 +73,18 @@ npx knex migrate:latest
 - Clientes recebem somente horários disponíveis, não os intervalos ou os dados de outras reservas.
 - Desativar um cliente remove suas credenciais e dados pessoais, preservando o vínculo das reservas históricas.
 - O faturamento considera somente atendimentos concluídos e o preço registrado no agendamento; reservas antigas recebem o preço atual na migração inicial.
+
+## Requisitos do TCC
+
+| Requisito | Atendimento no sistema |
+| --------- | ---------------------- |
+| RF01–RF03 | Clientes podem criar e gerenciar a própria conta; administração consulta, altera e desativa clientes, profissionais e serviços. O catálogo guarda preço e duração. |
+| RF04–RF05 | A agenda valida serviço, profissional, duração, expediente e conflitos; cliente, profissional e administração podem consultar ou alterar reservas conforme suas permissões. |
+| RF06–RF07 | Administração dispõe de agenda diária, semanal e mensal; a área do cliente lista reservas atuais e histórico. |
+| RF08–RF09 | Área autenticada do cliente permite consultar e reservar; relatórios administrativos mostram atendimentos e faturamento por período. |
+| RNF01–RNF02 | Interface HTML/CSS responsiva, com formulários e tabelas utilizáveis em navegadores web modernos. |
+| RNF03 | Índices dedicados atendem consultas por profissional, data e cliente; os testes de integração verificam disponibilidade e criação de reserva abaixo de 2 segundos. |
+| RNF04 | Senhas de clientes, profissionais e administração são verificadas por hashes bcrypt; áreas restritas exigem sessão autenticada. |
 
 ## Testes
 
