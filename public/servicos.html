@@ -21,7 +21,7 @@
       <nav class="nav" aria-label="Navegação principal">
         <a href="cliente.html">Início</a>
         <a href="servicos.html" aria-current="page">Serviços</a>
-        <a href="cadastro.html">Entrar / cadastrar</a>
+        <a href="cadastro.html">Cadastrar/entrar</a>
         <a href="agendamento.html">Agendamento</a>
       </nav>
       <button class="menu-toggle" type="button" aria-label="Abrir menu" aria-expanded="false">☰</button>
@@ -53,11 +53,23 @@
 
     <script>
       const serviceGrid = document.querySelector("#service-grid");
-      const imageCredits = {
-        "/imagens/box-braids.jpg": '<small class="service-credit">Foto: <a href="https://commons.wikimedia.org/wiki/File:Box_Braids.jpg" target="_blank" rel="noreferrer">Randen Pederson / Wikimedia Commons</a> · <a href="https://creativecommons.org/licenses/by/2.0/" target="_blank" rel="noreferrer">CC BY 2.0</a></small>',
-        "/imagens/trancas-referencia.jpg": '<small class="service-credit">Foto: <a href="https://commons.wikimedia.org/wiki/File:Fine_Braids,_Dimma_(13307706094).jpg" target="_blank" rel="noreferrer">Rod Waddington / Wikimedia Commons</a> · <a href="https://creativecommons.org/licenses/by-sa/2.0/" target="_blank" rel="noreferrer">CC BY-SA 2.0</a></small>',
-        "/imagens/tratamento-capilar.jpg": '<small class="service-credit">Foto: <a href="https://geehair.com/" target="_blank" rel="noreferrer">Gee Hair Images</a> / <a href="https://commons.wikimedia.org/wiki/File:Hair_Oil_Treatment_at_Hair_Salon.jpg" target="_blank" rel="noreferrer">Wikimedia Commons</a> · <a href="https://creativecommons.org/licenses/by/2.0/" target="_blank" rel="noreferrer">CC BY 2.0</a></small>'
-      };
+      const defaultServiceImages = [
+        "/imagens/corte-cabelo.png",
+        "/imagens/coloracao.png",
+        "/imagens/hidratacao.avif",
+        "/imagens/trancas-salao.jpg"
+      ];
+
+      function defaultImageForService(service) {
+        const name = String(service.nome_servico || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+        if (/corte/.test(name)) return "/imagens/corte-cabelo.png";
+        if (/color|tintur|mecha|luzes/.test(name)) return "/imagens/coloracao.png";
+        if (/hidrat|tratamento|cronograma|capilar/.test(name)) return "/imagens/hidratacao.avif";
+        if (/tranc|braid/.test(name)) return "/imagens/trancas-salao.jpg";
+        const id = Number(service.id_servico);
+        return defaultServiceImages[(Number.isInteger(id) && id > 0 ? id - 1 : 0) % defaultServiceImages.length];
+      }
+
       const escapeHtml = value => String(value).replace(/[&<>"']/g, character => ({
         "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
       })[character]);
@@ -74,21 +86,21 @@
           }
           serviceGrid.innerHTML = services.map(service => {
             const name = escapeHtml(service.nome_servico);
-            const image = typeof service.imagem_url === "string" ? service.imagem_url : "";
+            const image = typeof service.imagem_url === "string" && service.imagem_url
+              ? service.imagem_url
+              : defaultImageForService(service);
             const safeImage = image.startsWith("/") && !image.startsWith("//") || /^https?:\/\//i.test(image);
             const imageMarkup = safeImage
-              ? `<img src="${escapeHtml(image)}" alt="Sugestão para ${name}" loading="lazy" decoding="async">`
+              ? `<img src="${escapeHtml(image)}" alt="Foto de referência para ${name}" loading="lazy" decoding="async">`
               : '<div class="service-image-placeholder" aria-hidden="true">Berenice Braids</div>';
             const description = service.descricao
               ? `<p>${escapeHtml(service.descricao)}</p>`
               : '<p>Consulte nossa equipe para saber mais sobre este serviço.</p>';
-            const credit = imageCredits[image] || "";
             const price = Number(service.preco).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
             return `<figure class="service-card">${imageMarkup}<figcaption>
               <span class="feature-number">${escapeHtml(service.nome_categoria || "SERVIÇO").toUpperCase()}</span>
               <h2>${name}</h2>${description}
               <p class="service-price">R$ ${price} · ${Number(service.duracao_minutos)} min</p>
-              ${credit}
               <a class="service-book-link" href="/cadastro.html?next=${encodeURIComponent(`/agendamento.html?servico=${service.id_servico}`)}">Agendar este serviço <span aria-hidden="true">→</span></a>
             </figcaption></figure>`;
           }).join("");
