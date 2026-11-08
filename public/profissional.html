@@ -11,9 +11,25 @@
       .professional-heading { display: flex; align-items: end; justify-content: space-between; gap: 24px; margin-bottom: 28px; }
       .professional-heading h1 { margin: 8px 0; }
       .professional-heading p { margin: 0; color: #637275; }
-      .agenda-date { display: flex; align-items: center; gap: 10px; }
-      .agenda-date input { min-height: 44px; padding: 8px 12px; border: 1px solid #d6dfda; border-radius: 10px; color: #173f42; font: inherit; }
+      .agenda-controls { display: grid; gap: 10px; }
+      .agenda-views, .agenda-navigation { display: flex; align-items: center; gap: 8px; }
+      .agenda-views button, .agenda-navigation button { min-height: 40px; padding: 8px 12px; border: 1px solid #d6dfda; border-radius: 9px; background: #fff; color: #174d50; font: inherit; cursor: pointer; }
+      .agenda-views button.active { border-color: #174d50; background: #174d50; color: #fff; }
+      .agenda-navigation input { min-height: 40px; padding: 7px 10px; border: 1px solid #d6dfda; border-radius: 9px; color: #173f42; font: inherit; }
+      .agenda-period-title { margin: 0 0 14px; color: #174d50; font-size: 1.25rem; text-transform: capitalize; }
       .professional-appointments { display: grid; gap: 14px; }
+      .professional-password-panel { margin-top: 20px; padding: 14px 16px; border: 1px solid #e1e8e3; border-radius: 12px; background: #fff; }
+      .professional-password-panel summary { color: #174d50; font-weight: 700; cursor: pointer; }
+      .professional-password-panel > p { margin: 12px 0; color: #637275; font-size: .88rem; }
+      .professional-password-form { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; align-items: end; }
+      .professional-password-form label { display: grid; gap: 6px; font-weight: 600; }
+      .professional-password-form input { box-sizing: border-box; width: 100%; min-height: 42px; padding: 9px 11px; border: 1px solid #d6dfda; border-radius: 9px; font: inherit; }
+      .password-input-group { display: flex; gap: 6px; }
+      .password-input-group input { min-width: 0; }
+      .professional-password-form .password-input-group button { min-height: 42px; padding: 7px 10px; border: 1px solid #d6dfda; border-radius: 9px; background: #fff; color: #174d50; font: inherit; cursor: pointer; }
+      .professional-password-form button { min-height: 42px; padding: 9px 14px; border: 1px solid #174d50; border-radius: 9px; background: #174d50; color: white; font: inherit; cursor: pointer; }
+      .professional-password-form button:disabled { cursor: wait; opacity: .6; }
+      .professional-password-message { margin-top: 8px !important; }
       .professional-appointment { display: grid; grid-template-columns: minmax(125px, .7fr) minmax(0, 2fr) auto; align-items: center; gap: 18px; padding: 20px; border: 1px solid #e1e8e3; border-radius: 16px; background: #fff; }
       .professional-time { color: #174d50; font-size: 1.15rem; font-weight: 700; white-space: nowrap; }
       .professional-details strong, .professional-details span { display: block; }
@@ -39,6 +55,10 @@
       .professional-dialog-actions button[type="submit"] { border-color: #174d50; background: #174d50; color: white; }
       @media (max-width: 700px) {
         .professional-heading { align-items: start; flex-direction: column; }
+        .agenda-controls { width: 100%; }
+        .agenda-views, .agenda-navigation { flex-wrap: wrap; }
+        .agenda-navigation input { flex: 1; }
+        .professional-password-form { grid-template-columns: 1fr; }
         .professional-appointment { grid-template-columns: 1fr; gap: 10px; }
         .professional-actions { justify-content: start; }
       }
@@ -65,12 +85,53 @@
               <h1>Minha agenda</h1>
               <p>Consulte seus atendimentos e atualize cada horário.</p>
             </div>
-            <label class="agenda-date">Dia <input id="agenda-date" type="date"></label>
+            <div class="agenda-controls" aria-label="Controles da agenda">
+              <div class="agenda-views" role="group" aria-label="Período da agenda">
+                <button class="active" id="agenda-day-view" type="button" aria-pressed="true">Dia</button>
+                <button id="agenda-week-view" type="button" aria-pressed="false">Semana</button>
+                <button id="agenda-month-view" type="button" aria-pressed="false">Mês</button>
+              </div>
+              <div class="agenda-navigation">
+                <button id="agenda-previous" type="button" aria-label="Dia anterior" title="Dia anterior">‹</button>
+                <label id="agenda-date-label" for="agenda-date">Data</label>
+                <input id="agenda-date" type="date">
+                <input id="agenda-month" type="month" aria-label="Mês da agenda" hidden>
+                <button id="agenda-next" type="button" aria-label="Próximo dia" title="Próximo dia">›</button>
+                <button id="agenda-today" type="button">Hoje</button>
+              </div>
+            </div>
           </div>
           <p class="form-message" id="agenda-message" role="status" aria-live="polite"></p>
+          <h2 class="agenda-period-title" id="agenda-period-title"></h2>
           <div class="professional-appointments" id="appointments" aria-live="polite">
             <p class="professional-empty">Carregando seus atendimentos...</p>
           </div>
+          <details class="professional-password-panel">
+            <summary>Alterar senha</summary>
+            <p>A senha atual não pode ser exibida, pois fica protegida no sistema. Você pode trocá-la informando a senha atual.</p>
+            <form class="professional-password-form" id="password-form">
+              <label for="current-password">Senha atual
+                <span class="password-input-group">
+                  <input id="current-password" name="senha_atual" type="password" autocomplete="current-password" required>
+                  <button type="button" data-password-toggle="current-password" aria-label="Mostrar senha atual">Mostrar</button>
+                </span>
+              </label>
+              <label for="new-password">Nova senha
+                <span class="password-input-group">
+                  <input id="new-password" name="nova_senha" type="password" minlength="6" autocomplete="new-password" required>
+                  <button type="button" data-password-toggle="new-password" aria-label="Mostrar nova senha">Mostrar</button>
+                </span>
+              </label>
+              <label for="confirm-password">Confirmar nova senha
+                <span class="password-input-group">
+                  <input id="confirm-password" name="confirmar_senha" type="password" minlength="6" autocomplete="new-password" required>
+                  <button type="button" data-password-toggle="confirm-password" aria-label="Mostrar confirmação da senha">Mostrar</button>
+                </span>
+              </label>
+              <button type="submit">Alterar senha</button>
+            </form>
+            <p class="form-message professional-password-message" id="password-message" role="status" aria-live="polite"></p>
+          </details>
         </div>
       </section>
     </main>
@@ -93,16 +154,42 @@
     <script>
       const appointmentsList = document.querySelector("#appointments");
       const agendaDate = document.querySelector("#agenda-date");
+      const agendaMonth = document.querySelector("#agenda-month");
       const agendaMessage = document.querySelector("#agenda-message");
+      const agendaTitle = document.querySelector("#agenda-period-title");
+      const agendaDayView = document.querySelector("#agenda-day-view");
+      const agendaWeekView = document.querySelector("#agenda-week-view");
+      const agendaMonthView = document.querySelector("#agenda-month-view");
+      const agendaPrevious = document.querySelector("#agenda-previous");
+      const agendaNext = document.querySelector("#agenda-next");
+      const agendaToday = document.querySelector("#agenda-today");
+      const agendaDateLabel = document.querySelector("#agenda-date-label");
+      const passwordForm = document.querySelector("#password-form");
+      const passwordMessage = document.querySelector("#password-message");
       const dialog = document.querySelector("#appointment-dialog");
       const appointmentForm = document.querySelector("#appointment-form");
       const dialogField = document.querySelector("#dialog-field");
       const rescheduleField = document.querySelector("#reschedule-field");
       const dialogMessage = document.querySelector("#dialog-message");
       let selectedAction = null;
+      let agendaView = "day";
 
       function dateValue(date = new Date()) {
         return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+      }
+
+      function dateAtNoon(value) {
+        return new Date(`${value}T12:00:00`);
+      }
+
+      function shiftDate(value, days) {
+        const [year, month, day] = value.split("-").map(Number);
+        return dateValue(new Date(year, month - 1, day + days));
+      }
+
+      function weekStart(value) {
+        const date = dateAtNoon(value);
+        return shiftDate(value, -((date.getDay() + 6) % 7));
       }
 
       function escapeHtml(value) {
@@ -115,12 +202,70 @@
         return new Date(value).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
       }
 
+      passwordForm.querySelectorAll("[data-password-toggle]").forEach(button => {
+        button.addEventListener("click", () => {
+          const input = document.getElementById(button.dataset.passwordToggle);
+          const showPassword = input.type === "password";
+          input.type = showPassword ? "text" : "password";
+          button.textContent = showPassword ? "Ocultar" : "Mostrar";
+          button.setAttribute("aria-label", `${showPassword ? "Ocultar" : "Mostrar"} ${input.labels?.[0]?.textContent.trim() || "senha"}`);
+        });
+      });
+
+      passwordForm.addEventListener("submit", async event => {
+        event.preventDefault();
+        const currentPassword = passwordForm.elements.senha_atual.value;
+        const newPassword = passwordForm.elements.nova_senha.value;
+        const confirmPassword = passwordForm.elements.confirmar_senha.value;
+        const submitButton = passwordForm.querySelector("button[type='submit']");
+        passwordMessage.className = "form-message professional-password-message";
+        passwordMessage.textContent = "";
+        if (newPassword !== confirmPassword) {
+          passwordMessage.classList.add("error");
+          passwordMessage.textContent = "A confirmação da nova senha não corresponde.";
+          return;
+        }
+
+        submitButton.disabled = true;
+        try {
+          const response = await fetch("/profissional/minha-senha", {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ senha_atual: currentPassword, nova_senha: newPassword })
+          });
+          const result = await response.json();
+          if (response.status === 401) {
+            window.location.assign("/cadastro.html?next=%2Fprofissional.html");
+            return;
+          }
+          if (!response.ok) throw new Error(result.error || "Não foi possível alterar a senha.");
+          passwordForm.reset();
+          passwordMessage.classList.add("success");
+          passwordMessage.textContent = result.message;
+        } catch (error) {
+          passwordMessage.classList.add("error");
+          passwordMessage.textContent = error.message;
+        } finally {
+          submitButton.disabled = false;
+        }
+      });
+
       async function loadAppointments() {
         agendaMessage.className = "form-message";
         agendaMessage.textContent = "";
         appointmentsList.innerHTML = '<p class="professional-empty">Carregando seus atendimentos...</p>';
         try {
-          const response = await fetch(`/profissional/agendamentos?data=${encodeURIComponent(agendaDate.value)}`, { cache: "no-store" });
+          const query = new URLSearchParams();
+          if (agendaView === "month") {
+            query.set("mes", agendaMonth.value);
+          } else if (agendaView === "week") {
+            const start = weekStart(agendaDate.value);
+            query.set("inicio", start);
+            query.set("fim", shiftDate(start, 6));
+          } else {
+            query.set("data", agendaDate.value);
+          }
+          const response = await fetch(`/profissional/agendamentos?${query}`, { cache: "no-store" });
           const result = await response.json();
           if (response.status === 401) {
             window.location.assign("/cadastro.html?next=%2Fprofissional.html");
@@ -129,9 +274,17 @@
           if (!response.ok) throw new Error(result.error || "Não foi possível carregar a agenda.");
           document.querySelector("#professional-name").textContent = result.profissional.nome;
           const appointments = result.agendamentos;
+          const monthly = agendaView === "month";
+          const weekly = agendaView === "week";
+          agendaTitle.textContent = monthly
+            ? dateAtNoon(`${result.mes}-01`).toLocaleDateString("pt-BR", { month: "long", year: "numeric" })
+            : weekly
+              ? `${dateAtNoon(result.inicio).toLocaleDateString("pt-BR", { day: "2-digit", month: "short" })} – ${dateAtNoon(result.fim).toLocaleDateString("pt-BR", { day: "2-digit", month: "short", year: "numeric" })}`
+              : dateAtNoon(result.data).toLocaleDateString("pt-BR", { weekday: "long", day: "2-digit", month: "long", year: "numeric" });
           appointmentsList.innerHTML = appointments.length ? appointments.map(appointment => `
             <article class="professional-appointment">
               <div>
+                ${monthly || weekly ? `<div class="professional-details"><strong>${dateAtNoon(appointment.data_hora_inicio.slice(0, 10)).toLocaleDateString("pt-BR", { weekday: "short", day: "2-digit", month: "2-digit" })}</strong></div>` : ""}
                 <div class="professional-time">${displayTime(appointment.data_hora_inicio)}–${displayTime(appointment.data_hora_fim)}</div>
                 <span class="professional-status" data-status="${escapeHtml(appointment.status)}">${escapeHtml(appointment.status)}</span>
               </div>
@@ -148,7 +301,7 @@
                   <button class="cancel-action" data-action="Cancelado" data-id="${appointment.id_agendamento}" type="button">Cancelar</button>` : ""}
               </div>
             </article>
-          `).join("") : '<p class="professional-empty">Você não tem atendimentos para este dia.</p>';
+          `).join("") : `<p class="professional-empty">${monthly ? "Você não tem atendimentos para este mês." : weekly ? "Você não tem atendimentos para esta semana." : "Você não tem atendimentos para este dia."}</p>`;
         } catch (error) {
           appointmentsList.innerHTML = '<p class="professional-empty">Não foi possível carregar seus atendimentos.</p>';
           agendaMessage.className = "form-message error";
@@ -241,8 +394,58 @@
       });
 
       document.querySelector("#dialog-close").addEventListener("click", () => dialog.close());
-      agendaDate.value = dateValue();
+      function setAgendaView(view) {
+        agendaView = view;
+        const monthly = view === "month";
+        const weekly = view === "week";
+        for (const [button, selected] of [
+          [agendaDayView, view === "day"],
+          [agendaWeekView, weekly],
+          [agendaMonthView, monthly]
+        ]) {
+          button.classList.toggle("active", selected);
+          button.setAttribute("aria-pressed", String(selected));
+        }
+        agendaDate.hidden = monthly;
+        agendaMonth.hidden = !monthly;
+        agendaDateLabel.hidden = monthly;
+        agendaDateLabel.textContent = weekly ? "Semana de" : "Data";
+        agendaPrevious.setAttribute("aria-label", monthly ? "Mês anterior" : weekly ? "Semana anterior" : "Dia anterior");
+        agendaPrevious.title = monthly ? "Mês anterior" : weekly ? "Semana anterior" : "Dia anterior";
+        agendaNext.setAttribute("aria-label", monthly ? "Próximo mês" : weekly ? "Próxima semana" : "Próximo dia");
+        agendaNext.title = monthly ? "Próximo mês" : weekly ? "Próxima semana" : "Próximo dia";
+        agendaToday.textContent = monthly ? "Este mês" : weekly ? "Esta semana" : "Hoje";
+        loadAppointments();
+      }
+
+      function changeAgendaPeriod(amount) {
+        if (agendaView === "month") {
+          const [year, month] = agendaMonth.value.split("-").map(Number);
+          const changed = new Date(year, month - 1 + amount, 1);
+          agendaMonth.value = `${changed.getFullYear()}-${String(changed.getMonth() + 1).padStart(2, "0")}`;
+        } else {
+          const days = agendaView === "week" ? amount * 7 : amount;
+          agendaDate.value = shiftDate(agendaDate.value, days);
+        }
+        loadAppointments();
+      }
+
+      const today = dateValue();
+      agendaDate.value = today;
+      agendaMonth.value = today.slice(0, 7);
       agendaDate.addEventListener("change", loadAppointments);
+      agendaMonth.addEventListener("change", loadAppointments);
+      agendaDayView.addEventListener("click", () => setAgendaView("day"));
+      agendaWeekView.addEventListener("click", () => setAgendaView("week"));
+      agendaMonthView.addEventListener("click", () => setAgendaView("month"));
+      agendaPrevious.addEventListener("click", () => changeAgendaPeriod(-1));
+      agendaNext.addEventListener("click", () => changeAgendaPeriod(1));
+      agendaToday.addEventListener("click", () => {
+        const currentDate = dateValue();
+        agendaDate.value = currentDate;
+        agendaMonth.value = currentDate.slice(0, 7);
+        loadAppointments();
+      });
       document.querySelector("#professional-logout").addEventListener("click", async () => {
         await fetch("/profissional/logout", { method: "POST" });
         window.location.assign("/cadastro.html?next=%2Fprofissional.html");

@@ -7,6 +7,18 @@ const STATUS_VALIDOS = ['Pendente', 'Confirmado', 'Concluido', 'Cancelado'];
 
 // Mantém o formato de data/hora local esperado pelo banco e pela agenda.
 const pad = value => String(value).padStart(2, '0');
+function dataCalendarioValida(value) {
+  if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+  const [year, month, day] = value.split('-').map(Number);
+  const date = new Date(Date.UTC(year, month - 1, day));
+  return date.getUTCFullYear() === year && date.getUTCMonth() === month - 1 && date.getUTCDate() === day;
+}
+
+function somarDias(value, amount) {
+  const [year, month, day] = value.split('-').map(Number);
+  return new Date(Date.UTC(year, month - 1, day + amount)).toISOString().slice(0, 10);
+}
+
 const formatDateTime = date =>
   `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
 
@@ -190,17 +202,28 @@ module.exports = {
 
   async listarDaProfissional(req, res) {
     try {
-      const { data } = req.query;
-      if (typeof data !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(data)) {
-        return res.status(400).json({ error: 'Informe a data da agenda no formato AAAA-MM-DD.' });
+      const { data, inicio, fim, mes } = req.query;
+      const consultaMensal = typeof mes === 'string';
+      const consultaSemanal = typeof inicio === 'string' || typeof fim === 'string';
+      if (consultaMensal && consultaSemanal) {
+        return res.status(400).json({ error: 'Escolha uma única visualização da agenda.' });
       }
-      const [year, month, day] = data.split('-').map(Number);
-      const calendarDate = new Date(year, month - 1, day);
-      if (calendarDate.getFullYear() !== year || calendarDate.getMonth() !== month - 1 || calendarDate.getDate() !== day) {
+      if (consultaMensal && !/^\d{4}-(0[1-9]|1[0-2])$/.test(mes)) {
+        return res.status(400).json({ error: 'Informe um mês válido no formato AAAA-MM.' });
+      }
+      if (consultaSemanal && (!dataCalendarioValida(inicio) || !dataCalendarioValida(fim) || somarDias(inicio, 6) !== fim)) {
+        return res.status(400).json({ error: 'Informe o início e o fim de uma semana válida.' });
+      }
+      if (!consultaMensal && !consultaSemanal && !dataCalendarioValida(data)) {
         return res.status(400).json({ error: 'Informe uma data válida no formato AAAA-MM-DD.' });
       }
 
-      const agendamentos = await db('AGENDAMENTO')
+      const inicioMes = consultaMensal ? `${mes}-01` : null;
+      const proximoMes = consultaMensal
+        ? new Date(Date.UTC(Number(mes.slice(0, 4)), Number(mes.slice(5, 7)), 1)).toISOString().slice(0, 10)
+        : null;
+      const proximoDia = consultaSemanal ? somarDias(fim, 1) : null;
+      const consulta = db('AGENDAMENTO')
         .join('CLIENTE', 'AGENDAMENTO.id_cliente', '=', 'CLIENTE.id_cliente')
         .join('SERVICO', 'AGENDAMENTO.id_servico', '=', 'SERVICO.id_servico')
         .select(
@@ -217,11 +240,20 @@ module.exports = {
           'SERVICO.duracao_minutos'
         )
         .where('AGENDAMENTO.id_profissional', req.professional.id_profissional)
-        .whereLike('AGENDAMENTO.data_hora_inicio', `${data}%`)
         .orderBy('AGENDAMENTO.data_hora_inicio');
+      if (consultaMensal) {
+        consulta.where('AGENDAMENTO.data_hora_inicio', '>=', inicioMes)
+          .where('AGENDAMENTO.data_hora_inicio', '<', proximoMes);
+      } else if (consultaSemanal) {
+        consulta.where('AGENDAMENTO.data_hora_inicio', '>=', inicio)
+          .where('AGENDAMENTO.data_hora_inicio', '<', proximoDia);
+      } else {
+        consulta.whereLike('AGENDAMENTO.data_hora_inicio', `${data}%`);
+      }
+      const agendamentos = await consulta;
       return res.json({
         profissional: { id_profissional: req.professional.id_profissional, nome: req.professional.nome },
-        data,
+        ...(consultaMensal ? { mes } : consultaSemanal ? { inicio, fim } : { data }),
         agendamentos
       });
     } catch (error) {
